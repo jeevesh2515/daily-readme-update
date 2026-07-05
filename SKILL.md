@@ -63,7 +63,23 @@ For each changed file, determine if it affects:
 - **Frontend** (new/removed components) → update feature list
 - **Tests** (new test files) → update test count + coverage table
 
-### Step 2: Run the CLI tool (fast path)
+### Step 2: Add markers to README (one-time setup)
+
+For the CLI to work non-destructively, add markers to your README where you want live data:
+
+```markdown
+<!-- readme-sync: stats -->
+<!-- readme-sync: routes -->
+<!-- readme-sync: modules -->
+<!-- readme-sync: components -->
+<!-- /readme-sync -->
+```
+
+The markers can go anywhere in your hand-crafted README. Content between
+markers is replaced; everything else is preserved. Without markers, the CLI
+will append a stats section (interactive) or skip (non-interactive).
+
+### Step 3: Run the CLI tool (fast path)
 
 If `readme-sync` is installed, run it first — it handles the mechanical updates:
 
@@ -73,7 +89,7 @@ pipx run readme-sync --apply
 
 Then review the diff and add any context the CLI couldn't generate (architecture decisions, design rationale, usage examples).
 
-### Step 3: Add human context
+### Step 4: Add human context
 
 The CLI tool handles *facts* (test counts, routes, deps). You handle *context*:
 
@@ -82,14 +98,14 @@ The CLI tool handles *facts* (test counts, routes, deps). You handle *context*:
 - **What** makes this implementation notable? (design decisions, trade-offs)
 - **Who** is this for? (target users, use cases)
 
-### Step 4: Verify
+### Step 5: Verify
 
 ```bash
 # The README must be truthful — verify every claim
 pipx run readme-sync --check
 ```
 
-### Step 5: Commit
+### Step 6: Commit
 
 ```bash
 git add README.md
