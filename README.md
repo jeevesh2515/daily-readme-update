@@ -2,10 +2,7 @@
 
 **Auto-sync README.md with your actual codebase. Every push. Every PR. No exceptions.**
 
-[![Tests](https://img.shields.io/badge/tests-self--hosted-brightgreen)]()
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)]()
-[![CLI](https://img.shields.io/badge/cli-pipx%20%7C%20uvx%20%7C%20pip-purple)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-orange)]()
 
 ---
 
@@ -23,18 +20,16 @@ Use all three. Or pick one. Any of them is better than a manual README.
 
 ---
 
-## Demo
-
-```bash
-# Before: README says "42 tests passing"
-# You just added 3 test files
-
-pipx run readme-sync --apply
-
-# After: README says "67 tests passing"
-# Routes updated. New modules documented. Frontend components synced.
-# All verified against actual source code.
-```
+<!-- readme-sync: stats -->
+| Metric | Value |
+|--------|-------|
+| Language | python |
+| Version | 1.0.0 |
+| Tests | pending configuration |
+| Lint | — |
+| Docker | no |
+| Latest commit | `851f5d4 feat: marker-based injection, LICENSE, .gitignore, CI workflow` |
+<!-- /readme-sync -->
 
 ---
 
@@ -104,14 +99,37 @@ Every fact is **verified at runtime** — not guessed, not cached, not approxima
 
 ### README Generation
 
-The generated README includes:
+The generated README uses **marker-based injection** — embed `<!-- readme-sync: stats -->
+| Metric | Value |
+|--------|-------|
+| Language | python |
+| Version | 1.0.0 |
+| Tests | pending configuration |
+| Lint | — |
+| Docker | no |
+| Latest commit | `851f5d4 feat: marker-based injection, LICENSE, .gitignore, CI workflow` |
+<!-- /readme-sync -->` in your hand-crafted README and `readme-sync` only replaces what's between the markers. The rest of your narrative stays intact.
 
-- **Badges** — test count, language, Docker support, version
-- **Quick start** — framework-appropriate install + run instructions
-- **API table** — all detected routes with methods and paths
-- **Module list** — source code directory structure
-- **Frontend components** — React/Vue/Svelte component inventory
-- **Test suite status** — live test count, not a hardcoded number
+```markdown
+# My Project
+
+## Quick Start
+...
+
+<!-- readme-sync: stats -->
+| Metric | Value |
+|--------|-------|
+| Language | python |
+| Version | 1.0.0 |
+| Tests | pending configuration |
+| Lint | — |
+| Docker | no |
+| Latest commit | `851f5d4 feat: marker-based injection, LICENSE, .gitignore, CI workflow` |
+<!-- /readme-sync -->
+
+## Architecture
+...
+```
 
 ---
 
@@ -189,9 +207,8 @@ Fails any PR where the README doesn't match the codebase. Auto-comments with the
 - **No credential access.** Does not read `.env`, secrets, or configuration files.
 - **Reads only project files.** Scans source code for structural patterns, not content.
 - **Suppressed build output.** Frontend build commands redirect stdout to prevent credential leakage in logs.
-- **Exact-string matching.** All edits use literal string replacement, not regex — no risk of content corruption.
+- **Marker-only edits.** Only replaces content between `<!-- readme-sync -->` markers. Never destructive.
 - **Git-local only.** Only modifies `README.md`. Never touches source code, config, or deployment files.
-- **Opinionated output.** Generates a clean, standardized README. Does not preserve stale content.
 
 ---
 
@@ -247,10 +264,6 @@ The root cause isn't laziness. It's that **documentation is a different cognitiv
 MIT — do whatever you want. Fork it, modify it, use it in proprietary projects, include it in your own toolchains. Attribution appreciated but not required.
 
 ---
-
-## Star History
-
-If this tool saves you even one "the README was wrong" debugging session, give it a star. It costs nothing and helps other developers find it.
 
 <p align="center">
   <sub>Built for the vibe coding era. Documentation shouldn't be an afterthought — it should be a build artifact.</sub>
