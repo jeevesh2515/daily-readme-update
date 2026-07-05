@@ -53,7 +53,7 @@
 | Lint | — |
 | Docker | no |
 | Monorepo | no |
-| Latest commit | `205361a cleanup: remove VS Code extension, update Homebrew install cmd` |
+| Latest commit | `5558fcd fix: remove invalid PyPI classifier` |
 
 <!-- /readme-guardian -->
 
