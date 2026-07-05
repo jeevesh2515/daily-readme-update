@@ -1,0 +1,31 @@
+[project]
+name = "readme-sync"
+version = "1.0.0"
+description = "Auto-sync README.md with your actual codebase — CLI, pre-push hook, and CI enforcement."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+keywords = ["documentation", "readme", "git-hooks", "developer-tools", "vibe-coding"]
+
+authors = [
+    {name = "Jeevesh Singale"},
+]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+
+[project.urls]
+Homepage = "https://github.com/jeevesh2515/daily-readme-update"
+Repository = "https://github.com/jeevesh2515/daily-readme-update"
+
+[project.scripts]
+readme-sync = "readme_sync:main"
+
+[tool.setuptools.packages.find]
+include = ["readme_sync*"]

@@ -1,0 +1,42 @@
+name: README Sync Check
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install readme-sync
+        run: pip install readme-sync 2>/dev/null || pip install ../.
+
+      - name: Run README freshness check
+        run: python -m readme_sync --check
+
+      - name: Post PR comment if stale
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **README is out of date.**\n\nRun `readme-sync` to auto-update it before merging.\n\n```bash\npipx run readme-sync --apply\ngit add README.md\ngit commit -m "docs: sync README"\n```\n\n_This check runs automatically on every PR._'
+            })
