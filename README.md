@@ -28,7 +28,7 @@ Use all three. Or pick one. Any of them is better than a manual README.
 | Tests | pending configuration |
 | Lint | — |
 | Docker | no |
-| Latest commit | `851f5d4 feat: marker-based injection, LICENSE, .gitignore, CI workflow` |
+| Latest commit | `9e73bc9 drop workflow file from git push (needs workflow scope)` |
 <!-- /readme-sync -->
 
 ---
@@ -107,7 +107,7 @@ The generated README uses **marker-based injection** — embed `<!-- readme-sync
 | Tests | pending configuration |
 | Lint | — |
 | Docker | no |
-| Latest commit | `851f5d4 feat: marker-based injection, LICENSE, .gitignore, CI workflow` |
+| Latest commit | `9e73bc9 drop workflow file from git push (needs workflow scope)` |
 <!-- /readme-sync -->` in your hand-crafted README and `readme-sync` only replaces what's between the markers. The rest of your narrative stays intact.
 
 ```markdown
@@ -124,7 +124,7 @@ The generated README uses **marker-based injection** — embed `<!-- readme-sync
 | Tests | pending configuration |
 | Lint | — |
 | Docker | no |
-| Latest commit | `851f5d4 feat: marker-based injection, LICENSE, .gitignore, CI workflow` |
+| Latest commit | `9e73bc9 drop workflow file from git push (needs workflow scope)` |
 <!-- /readme-sync -->
 
 ## Architecture
