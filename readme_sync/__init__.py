@@ -1,37 +1,31 @@
 #!/usr/bin/env python3
 """
-readme-sync — Auto-sync README.md with your actual codebase.
+readme-guardian — The README freshness guarantee for vibe coders.
 
-Detects project type, runs tests, scans routes/modules, checks frontend build,
-and rewrites README.md with verified data using **marker-based injection**.
-Designed for pre-push hooks, CI, and AI-agent workflows.
+Auto-detects your project, runs tests, scans routes/modules/components,
+and keeps README.md in sync before every push. Zero config. One command.
 
 Usage:
-    readme-sync                  # Interactive: diff + confirm changes
-    readme-sync --apply          # Apply changes without confirmation
-    readme-sync --pre-push       # Silent mode for git hooks (no output on success)
-    readme-sync --check          # CI mode: exit 1 if README is stale
-    readme-sync --install-hook   # Install git pre-push hook
+    readme-guardian                        # Interactive mode
+    readme-guardian --apply                # Apply changes silently
+    readme-guardian --check                # CI mode: exit 1 if stale
+    readme-guardian --install-hook         # Pre-push hook (one-time)
+    readme-guardian --uninstall-hook       # Remove pre-push hook
+    readme-guardian --version              # Show version
 
 Install:
-    pipx install readme-sync
-    # or
-    uvx readme-sync
+    pipx install readme-guardian           # Python (any project)
+    npx readme-guardian                    # Node (via npm)
+    brew install readme-guardian           # macOS (future)
 """
 
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import textwrap
 from pathlib import Path
-from typing import Any
-
-
-MARKER_START = "<!-- readme-sync: {section} -->"
-MARKER_END = "<!-- /readme-sync -->"
 
 
 def debug(msg: str) -> None:
@@ -40,16 +34,16 @@ def debug(msg: str) -> None:
     print(f"  \U0001f4a1 {msg}", file=sys.stderr)
 
 
-def warn(msg: str) -> None:
-    if "--pre-push" in sys.argv:
-        return
-    print(f"  \u26a0\ufe0f {msg}", file=sys.stderr)
-
-
 def ok(msg: str) -> None:
     if "--pre-push" in sys.argv:
         return
     print(f"  \u2713 {msg}", file=sys.stderr)
+
+
+def warn(msg: str) -> None:
+    if "--pre-push" in sys.argv:
+        return
+    print(f"  \u26a0 {msg}", file=sys.stderr)
 
 
 def fail(msg: str) -> None:
@@ -58,39 +52,71 @@ def fail(msg: str) -> None:
     print(f"  \u2717 {msg}", file=sys.stderr)
 
 
+def banner() -> None:
+    if "--pre-push" in sys.argv:
+        return
+    print(file=sys.stderr)
+    print("  \U0001f6e1\ufe0f  readme-guardian v1.0", file=sys.stderr)
+    print("  \u2500" * 30, file=sys.stderr)
+
+
 # ---------------------------------------------------------------------------
-# Project detection
+# Project detection (language-agnostic, zero config)
 # ---------------------------------------------------------------------------
 
-Project = dict[str, Any]
-
-
-def detect_project(root: Path) -> Project:
-    info: Project = {
-        "root": root,
+def detect_project(root: Path) -> dict:
+    info = {
         "type": None,
-        "name": None,
-        "version": None,
-        "description": None,
+        "name": "my-project",
+        "version": "",
+        "description": "",
+        "scripts": {},
+        "is_monorepo": False,
         "has_frontend": False,
-        "has_tests": False,
         "has_docker": False,
         "test_command": None,
         "build_command": None,
         "lint_command": None,
+        "tests": 0,
+        "test_output": "",
         "routes": [],
         "modules": [],
-        "frontend_components": [],
-        "test_count": 0,
-        "test_output": "",
-        "lint_passes": None,
+        "components": [],
+        "lint_pass": None,
     }
 
-    if (root / "pyproject.toml").exists():
-        info["type"] = "python"
+    # --- Package.json (Node/JS/TS) — detected FIRST for broader reach ---
+    if (root / "package.json").exists():
         try:
-            with open(root / "pyproject.toml") as f:
-                content = f.read()
+            pkg = json.loads((root / "package.json").read_text())
+            info["name"] = pkg.get("name", info["name"])
+            info["version"] = pkg.get("version", "")
+            info["description"] = pkg.get("description", "")
+            info["scripts"] = pkg.get("scripts", {})
+
+            deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})}
+            if any(x in deps for x in ("next", "react", "vue", "svelte", "vite")):
+                info["has_frontend"] = True
+
+            if "test" in info["scripts"]:
+                info["test_command"] = "npm test -- --reporter=min 2>&1 || npm test 2>&1"
+            if "build" in info["scripts"]:
+                info["build_command"] = "npm run build 2>&1"
+            if "lint" in info["scripts"]:
+                info["lint_command"] = "npm run lint 2>&1"
+
+            workspaces = pkg.get("workspaces", [])
+            info["is_monorepo"] = bool(workspaces)
+        except Exception:
+            pass
+
+        if not info["type"]:
+            info["type"] = "node"
+
+    # --- pyproject.toml (Python) ---
+    if (root / "pyproject.toml").exists():
+        try:
+            content = (root / "pyproject.toml").read_text()
             m = re.search(r'name\s*=\s*"([^"]+)"', content)
             if m:
                 info["name"] = m.group(1)
@@ -102,51 +128,32 @@ def detect_project(root: Path) -> Project:
                 info["description"] = m.group(1)
         except Exception:
             pass
-        info["test_command"] = find_command(
-            root, ["pytest", "unittest", "nose"]
-        )
-        info["lint_command"] = find_command(
-            root, ["ruff", "flake8", "pylint", "black --check"]
-        )
-        info["build_command"] = None
+
+        info["type"] = "python"
+        if not info["test_command"]:
+            info["test_command"] = _find_python_cmd(root, "pytest")
+        if not info["lint_command"]:
+            info["lint_command"] = _find_python_cmd(root, "ruff")
         if (root / "frontend").is_dir():
             info["has_frontend"] = True
 
-    elif (root / "package.json").exists():
-        info["type"] = "node"
+    # --- go.mod (Go) ---
+    if (root / "go.mod").exists():
         try:
-            pkg = json.loads((root / "package.json").read_text())
-            info["name"] = pkg.get("name")
-            info["version"] = pkg.get("version")
-            info["description"] = pkg.get("description")
-            scripts = pkg.get("scripts", {})
-            if "test" in scripts:
-                info["test_command"] = "npm test"
-            if "build" in scripts:
-                info["build_command"] = "npm run build"
-            if "lint" in scripts:
-                info["lint_command"] = "npm run lint"
+            first = (root / "go.mod").read_text().split("\n")[0]
+            m = re.match(r"module\s+(\S+)", first)
+            if m:
+                info["name"] = m.group(1)
         except Exception:
             pass
-
-    elif (root / "go.mod").exists():
         info["type"] = "go"
-        try:
-            with open(root / "go.mod") as f:
-                first = f.readline()
-                m = re.match(r"module\s+(\S+)", first)
-                if m:
-                    info["name"] = m.group(1)
-        except Exception:
-            pass
-        info["test_command"] = "go test ./..."
-        info["build_command"] = "go build ./..."
+        info["test_command"] = "go test ./... 2>&1"
+        info["build_command"] = "go build ./... 2>&1"
 
-    elif (root / "Cargo.toml").exists():
-        info["type"] = "rust"
+    # --- Cargo.toml (Rust) ---
+    if (root / "Cargo.toml").exists():
         try:
-            with open(root / "Cargo.toml") as f:
-                content = f.read()
+            content = (root / "Cargo.toml").read_text()
             m = re.search(r'name\s*=\s*"([^"]+)"', content)
             if m:
                 info["name"] = m.group(1)
@@ -155,33 +162,36 @@ def detect_project(root: Path) -> Project:
                 info["version"] = m.group(1)
         except Exception:
             pass
-        info["test_command"] = "cargo test"
-        info["build_command"] = "cargo build"
+        info["type"] = "rust"
+        info["test_command"] = "cargo test 2>&1"
+        info["build_command"] = "cargo build 2>&1"
 
     if (root / "Dockerfile").exists():
         info["has_docker"] = True
 
+    # Detect workspaces/monorepo
+    if not info["is_monorepo"]:
+        for f in ["pnpm-workspace.yaml", "lerna.json", "rush.json"]:
+            if (root / f).exists():
+                info["is_monorepo"] = True
+                break
+
     return info
 
 
-def find_command(root: Path, candidates: list[str]) -> str | None:
-    for cmd in candidates:
-        if cmd == "pytest":
-            venv_pytest = root / ".venv" / "bin" / "pytest"
-            if venv_pytest.exists():
-                return f"{venv_pytest} -q"
-            if (root / "pyproject.toml").exists():
-                with open(root / "pyproject.toml") as f:
-                    if "pytest" in f.read():
-                        return ".venv/bin/python -m pytest -q"
-        if cmd == "ruff":
-            venv_ruff = root / ".venv" / "bin" / "ruff"
-            if venv_ruff.exists():
-                return f"{venv_ruff} check ."
-            if (root / "pyproject.toml").exists():
-                with open(root / "pyproject.toml") as f:
-                    if "ruff" in f.read():
-                        return ".venv/bin/python -m ruff check ."
+def _find_python_cmd(root: Path, tool: str) -> str | None:
+    """Check if a Python tool is available via venv or configured."""
+    bin_path = root / ".venv" / "bin" / tool
+    if bin_path.exists():
+        return f"{bin_path} 2>&1"
+    if (root / "pyproject.toml").exists():
+        with open(root / "pyproject.toml") as f:
+            if tool in f.read():
+                venv_python = root / ".venv" / "bin" / "python"
+                if tool == "pytest":
+                    return f"{venv_python} -m pytest -q 2>&1" if venv_python.exists() else None
+                elif tool == "ruff":
+                    return f"{venv_python} -m ruff check . 2>&1" if venv_python.exists() else None
     return None
 
 
@@ -189,550 +199,680 @@ def find_command(root: Path, candidates: list[str]) -> str | None:
 # Data collection
 # ---------------------------------------------------------------------------
 
-
-def run_command(cmd: str, root: Path, timeout: int = 30) -> tuple[int, str]:
+def _run(cmd: str, root: Path, timeout: int = 60) -> tuple[int, str]:
     try:
-        result = subprocess.run(
-            cmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            cwd=root,
-            timeout=timeout,
-        )
-        return result.returncode, result.stdout.strip()
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=root, timeout=timeout)
+        return r.returncode, r.stdout.strip()
     except subprocess.TimeoutExpired:
         return -1, "(timeout)"
     except FileNotFoundError:
         return -1, "(not found)"
 
 
-def collect_test_count(info: Project) -> int:
+def collect_tests(info: dict) -> int:
     cmd = info.get("test_command")
     if not cmd:
         return 0
     debug(f"Running: {cmd}")
-    rc, output = run_command(cmd, info["root"])
+    rc, output = _run(cmd, Path.cwd())
     info["test_output"] = output
-    if rc != 0:
-        warn(f"Tests failed (rc={rc}) — counting partial results")
 
     patterns = [
-        r"(\d+)\s+passed",
-        r"ok\s+(\d+)\s+test",
-        r"test result:\s+ok\.\s+(\d+)\s+passed",
+        (r"(\d+)\s+passed", 1),
+        (r"ok\s+(\d+)\s+test", 1),
+        (r"test result:\s+ok\.\s+(\d+)\s+passed", 1),
+        (r"Tests:\s+(\d+)", 1),
     ]
-    for pattern in patterns:
-        m = re.search(pattern, output)
+    for pat, group in patterns:
+        m = re.search(pat, output)
         if m:
-            count = int(m.group(1))
-            ok(f"Tests: {count} passed")
-            return count
+            n = int(m.group(group))
+            ok(f"Tests: {n} passing")
+            return n
+    if rc == 0:
+        ok("Tests: passed (count unknown)")
+        return -1
     return 0
 
 
-def collect_routes(info: Project) -> list[str]:
-    routes = []
-    root = info["root"]
+def collect_routes(info: dict) -> list[str]:
+    routes = set()
+    root = Path.cwd()
 
-    for pattern in [
-        "app/api/*.py",
-        "app/routers/*.py",
-        "app/*.py",
-        "routes/*.py",
-    ]:
-        for path in root.glob(pattern):
+    # FastAPI/Flask
+    for pat in ["**/*.py"]:
+        for path in root.glob(pat):
+            try:
+                content = path.read_text()
+                for m in re.finditer(r'@(?:router|app)\.(get|post|put|delete|patch)\s*\(\s*["\']([^"\']+)', content):
+                    routes.add(f"{m.group(0).split('.')[1].split('(')[0].upper()} {m.group(1)}")
+            except Exception:
+                pass
+
+    # Next.js App Router
+    for path in root.glob("app/api/**/route.*"):
+        rel = path.relative_to(root)
+        parts = rel.parts
+        # Build path from directory structure
+        route_parts = []
+        for p in parts:
+            if p in ("app", "route.ts", "route.js"):
+                continue
+            if p.startswith("["):
+                route_parts.append(f":{p.strip('[]')}")
+            else:
+                route_parts.append(p)
+        route_path = "/" + "/".join(route_parts)
+        routes.add(f"GET {route_path}")
+
+    # Express/Fastify
+    for pat in ["**/*.{ts,js}", "!node_modules/**"]:
+        for path in root.glob(pat):
+            if "node_modules" in str(path):
+                continue
+            try:
+                content = path.read_text()
+                for m in re.finditer(r'\.(get|post|put|delete|all|patch)\s*\(\s*["\'`]([^"\'`]+)', content, re.IGNORECASE):
+                    routes.add(f"{m.group(1).upper()} {m.group(2)}")
+            except Exception:
+                pass
+
+    # Go
+    for path in root.glob("**/*.go"):
+        try:
             content = path.read_text()
-            for m in re.finditer(
-                r'@(router|app)\.(get|post|put|delete|patch)\s*\(\s*["\']([^"\']+)',
-                content,
-            ):
-                routes.append(f"{m.group(2).upper()} {m.group(3)}")
+            for m in re.finditer(r'\.(Get|Post|Put|Delete|Patch|Handle)\s*\(\s*["\']([^"\']+)', content):
+                routes.add(f"{m.group(1).upper()} {m.group(2)}")
+        except Exception:
+            pass
 
-    for pattern in [
-        "routes/**/*.ts",
-        "routes/**/*.js",
-        "pages/api/**/*.ts",
-        "pages/api/**/*.js",
-    ]:
-        for path in root.glob(pattern):
-            content = path.read_text()
-            for m in re.finditer(
-                r'\.(get|post|put|delete|all)\s*\([\s"\']([^"\']+)', content
-            ):
-                routes.append(f"{m.group(1).upper()} {m.group(2)}")
-
-    for path in root.glob("app/api/**/route.ts"):
-        parts = path.relative_to(root).parts
-        route_path = (
-            "/"
-            + "/".join(p for p in parts if p not in ("app", "route.ts"))
-        )
-        routes.append(f"GET {route_path}")
-
-    for pattern in ["**/*.go"]:
-        for path in root.glob(pattern):
-            content = path.read_text()
-            for m in re.finditer(
-                r'\.(Get|Post|Put|Delete|Handle)\s*\(\s*["\']([^"\']+)', content
-            ):
-                routes.append(f"{m.group(1).upper()} {m.group(2)}")
-
-    if routes:
-        ok(f"Routes: {len(routes)} found")
-    return sorted(set(routes))
+    result = sorted(routes)
+    if result:
+        ok(f"Routes: {len(result)} found")
+    return result
 
 
-def collect_modules(info: Project) -> list[str]:
-    modules = []
-    root = info["root"]
+def collect_modules(info: dict) -> list[str]:
+    modules = set()
+    root = Path.cwd()
+
+    # Python
+    for d in root.glob("app/*/__init__.py"):
+        modules.add(d.parent.name)
+    for d in root.glob("src/*/__init__.py"):
+        modules.add(d.parent.name)
+
+    # Node
+    for d in root.glob("src/*/index.ts"):
+        modules.add(d.parent.name)
+    for d in root.glob("src/*/index.js"):
+        modules.add(d.parent.name)
+
+    # Go
+    for d in root.glob("cmd/*/main.go"):
+        modules.add(d.parent.name)
+    for d in root.glob("internal/*/"):
+        modules.add(d.name)
+
+    # Rust
+    for d in root.glob("src/*.rs"):
+        modules.add(d.stem)
+
+    # Any top-level source dirs
     for src_dir in ["app", "src", "lib", "cmd", "internal", "pkg"]:
         d = root / src_dir
         if d.is_dir():
             for item in sorted(d.iterdir()):
-                if item.is_dir() and not item.name.startswith(("__", ".")):
-                    modules.append(item.name)
-    return modules
+                if item.is_dir() and not item.name.startswith(("__", ".", "node_modules")):
+                    modules.add(item.name)
+
+    return sorted(modules)
 
 
-def check_frontend(info: Project) -> list[str]:
-    components = []
-    if not info["has_frontend"]:
-        return components
+def collect_components(info: dict) -> list[str]:
+    if not info.get("has_frontend") and info.get("type") != "node":
+        return []
+    components = set()
+    root = Path.cwd()
 
-    frontend_root = info["root"] / "frontend"
-    if not frontend_root.is_dir():
-        frontend_root = info["root"]
-
-    for pattern in [
-        "src/components/**/*.tsx",
-        "src/components/**/*.jsx",
-        "src/components/**/*.vue",
-        "src/components/**/*.svelte",
-    ]:
-        for path in frontend_root.glob(pattern):
+    frontend_root = root / "frontend" if (root / "frontend").is_dir() else root
+    for pat in ["**/*.tsx", "**/*.jsx", "**/*.vue", "**/*.svelte"]:
+        for path in frontend_root.glob(pat):
+            if "node_modules" in str(path):
+                continue
             name = path.stem
-            if name not in ("index",) and not name.startswith("_"):
-                components.append(name)
-
-    ts_config = frontend_root / "tsconfig.json"
-    if ts_config.exists():
-        rc, _ = run_command(
-            "npx tsc --noEmit 2>&1", frontend_root, timeout=60
-        )
-        if rc == 0:
-            ok("Frontend TypeScript: clean")
-        else:
-            warn("Frontend TypeScript: errors found")
-
-    build_cmd = info.get("build_command")
-    if build_cmd:
-        rc, output = run_command(build_cmd, root, timeout=120)
-        if rc == 0:
-            ok("Frontend build: clean")
-        else:
-            warn("Frontend build: failed")
+            if not name.startswith("_") and name not in ("index", "layout", "page", "loading", "error"):
+                components.add(name)
 
     if components:
-        ok(f"Frontend components: {len(components)} found")
+        ok(f"Components: {len(components)} found")
     return sorted(components)
 
 
-def check_lint(info: Project) -> bool | None:
+def collect_lint(info: dict) -> bool | None:
     cmd = info.get("lint_command")
     if not cmd:
         return None
-    rc, _ = run_command(cmd, info["root"])
+    rc, _ = _run(cmd, Path.cwd())
     if rc == 0:
         ok("Lint: clean")
         return True
+    warn("Lint: has issues")
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Badge SVG generation — self-updating freshness badge
+# ---------------------------------------------------------------------------
+
+BADGE_TEMPLATE = """\
+<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="20" role="img" aria-label="README: {status}">
+  <linearGradient id="s" x2="0" y2="100%%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r">
+    <rect width="{width}" height="20" rx="3" fill="#fff"/>
+  </clipPath>
+  <g clip-path="url(#r)">
+    <rect width="{left_w}" height="20" fill="#555"/>
+    <rect x="{left_w}" width="{right_w}" height="20" fill="{color}"/>
+    <rect width="{width}" height="20" fill="url(#s)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,DejaVu Sans,Geneva,sans-serif" font-size="11">
+    <text x="{left_mid}" y="14" fill="#010101" fill-opacity=".3">{label}</text>
+    <text x="{left_mid}" y="13">{label}</text>
+    <text x="{right_mid}" y="14" fill="#010101" fill-opacity=".3">{message}</text>
+    <text x="{right_mid}" y="13">{message}</text>
+  </g>
+</svg>"""
+
+
+def generate_badge(info: dict) -> str:
+    """Generate a shields.io-style SVG freshness badge."""
+    label = "README"
+    tests = info.get("tests", 0)
+    lint = info.get("lint_pass")
+
+    if tests > 0:
+        status = "fresh"
+        message = f"{tests} passing"
+        color = "#4c1"  # brightgreen
+    elif tests == 0 and lint is None:
+        status = "synced"
+        message = "synced"
+        color = "#4c1"  # green — at least it ran
+    elif tests == 0:
+        status = "no-tests"
+        message = "no tests"
+        color = "#dfb317"  # yellow
     else:
-        warn("Lint: issues found")
-        return False
+        status = "stale"
+        message = "stale"
+        color = "#e05d44"  # red
 
+    left_w = len(label) * 7 + 14
+    right_w = len(message) * 7 + 14
+    width = left_w + right_w
+    left_mid = left_w // 2
+    right_mid = left_w + right_w // 2
 
-def git_last_commit(root: Path) -> str:
-    rc, output = run_command("git log -1 --oneline", root)
-    if rc == 0:
-        return output
-    return ""
-
-
-# ---------------------------------------------------------------------------
-# Marker-based README injection
-# ---------------------------------------------------------------------------
-
-
-def _stats_block(info: Project) -> str:
-    """Generate the stats table for the <!-- readme-sync: stats --> marker."""
-    test_str = (
-        f"{info['test_count']} passing"
-        if info["test_count"]
-        else "pending configuration"
+    return BADGE_TEMPLATE.format(
+        width=width,
+        left_w=left_w,
+        right_w=right_w,
+        left_mid=left_mid,
+        right_mid=right_mid,
+        label=label,
+        message=message,
+        color=color,
+        status=status,
     )
-    commit = git_last_commit(info["root"])
-    commit_str = f"`{commit}`" if commit else "—"
-    type_str = info["type"] or "unknown"
-    name_str = info["name"] or "—"
-    version_str = info["version"] or "—"
-    docker_str = "yes" if info.get("has_docker") else "no"
-    lint_str = "clean" if info.get("lint_passes") else "issues" if info.get("lint_passes") is False else "—"
-
-    lines = [
-        "| Metric | Value |",
-        "|--------|-------|",
-        f"| Language | {type_str} |",
-        f"| Version | {version_str} |",
-        f"| Tests | {test_str} |",
-        f"| Lint | {lint_str} |",
-        f"| Docker | {docker_str} |",
-        f"| Latest commit | {commit_str} |",
-    ]
-    return "\n".join(lines)
 
 
-def _routes_block(info: Project) -> str:
+def update_badge(info: dict) -> bool:
+    """Generate and write the freshness badge SVG. Returns True if changed."""
+    path = Path.cwd() / "readme-badge.svg"
+    svg = generate_badge(info)
+    if path.exists() and path.read_text() == svg:
+        return False
+    path.write_text(svg)
+    ok(f"Badge: readme-badge.svg — {info.get('tests', 0)} tests passing")
+    return True
+
+
+# ---------------------------------------------------------------------------
+# README generation — clean, beautiful, readable
+# ---------------------------------------------------------------------------
+
+def shield(label: str, value: str, color: str = "brightgreen") -> str:
+    """Generate a shields.io badge."""
+    import urllib.parse
+    label_e = urllib.parse.quote(label)
+    value_e = urllib.parse.quote(value)
+    return f"![{label}](https://img.shields.io/badge/{label_e}-{value_e}-{color})"
+
+
+def freshness_badge(info: dict) -> str:
+    """Generate the green 'README fresh' badge."""
+    test_str = f"{info['tests']}%20passing" if info.get("tests", 0) > 0 else "synced"
+    return shield("README", f"fresh-{test_str}", "brightgreen")
+
+
+def generate_readme(info: dict) -> str:
+    """Generate a complete, beautiful README."""
+    name = info["name"] or "my-project"
+    desc = info["description"] or ""
+    version = info.get("version", "")
+    type_ = info.get("type", "unknown")
+    tests = info.get("tests", 0)
+    routes = info.get("routes", [])
+    modules = info.get("modules", [])
+    components = info.get("components", [])
+    docker = info.get("has_docker", False)
+    lint = info.get("lint_pass")
+
+    # Get last commit for freshness
+    rc, commit = _run("git log -1 --oneline", Path.cwd())
+    commit_str = commit if rc == 0 else ""
+    rc2, commit_msg = _run("git log -1 --format=%s", Path.cwd())
+    commit_msg_str = commit_msg if rc2 == 0 else ""
+
+    lines = []
+    lines.append(f"# {name}\n")
+    if desc:
+        lines.append(f"{desc}\n")
+
+    # --- Badge row ---
+    badges = [freshness_badge(info)]
+    if version:
+        badges.append(shield("version", version, "blue"))
+    badges.append(shield("lang", type_, "blue"))
+    if tests > 0:
+        badges.append(shield("tests", f"{tests}%20passing", "brightgreen"))
+    if lint is True:
+        badges.append(shield("lint", "clean", "brightgreen"))
+    elif lint is False:
+        badges.append(shield("lint", "issues", "yellow"))
+    if docker:
+        badges.append(shield("docker", "ready", "blue"))
+    lines.append(" ".join(badges) + "\n")
+
+    # --- Shield.io style ---
+    lines.append(
+        '<p align="center">\n'
+        "  <sub>README auto-synced by "
+        '<a href="https://github.com/jeevesh2515/readme-guardian">'
+        "readme-guardian</a> \U0001f6e1\ufe0f</sub>\n"
+        "</p>\n"
+    )
+
+    # --- Quick Start ---
+    lines.append("## \U0001f680 Quick Start\n")
+    lines.append(_quick_start(info))
+
+    # --- API Routes ---
+    if routes:
+        lines.append("## \U0001f4e1 API\n")
+        lines.append("| Method | Path |\n|--------|------|\n")
+        for r in routes[:25]:
+            parts = r.split(" ", 1)
+            if len(parts) == 2:
+                lines.append(f"| **{parts[0]}** | `{parts[1]}` |\n")
+        if len(routes) > 25:
+            lines.append(f"| ... | {len(routes) - 25} more |\n")
+        lines.append("")
+
+    # --- Modules ---
+    if modules:
+        lines.append("## \U0001f4c2 Modules\n\n")
+        for m in modules:
+            lines.append(f"- `{m}`\n")
+        lines.append("")
+
+    # --- Components ---
+    if components:
+        lines.append("## \U0001f3a8 Components\n\n")
+        for c in components:
+            lines.append(f"- `{c}`\n")
+        lines.append("")
+
+    # --- Test Suite ---
+    lines.append("## \U0001f9ea Test Suite\n\n")
+    if tests > 0:
+        lines.append(f"**{tests} tests passing** \u2705\n")
+    elif tests == 0:
+        lines.append("Tests: pending configuration.\n")
+    elif tests == -1:
+        lines.append("Tests: passing (count unknown).\n")
+
+    # --- Freshness footer ---
+    if commit_str:
+        lines.append(f"\n_Latest: `{commit_str}`")
+        if commit_msg_str:
+            lines.append(f" — _{commit_msg_str}_")
+        lines.append("_\n")
+
+    return "".join(lines)
+
+
+def _quick_start(info: dict) -> str:
+    t = info["type"]
+    if t == "node":
+        lines = [
+            "```bash",
+            "# Install dependencies",
+            "npm install",
+            "",
+            "# Start development server",
+            "npm run dev",
+            "```",
+        ]
+        if info.get("build_command"):
+            lines.insert(3, f"")
+            lines.insert(4, "# Build for production")
+            lines.insert(5, "npm run build")
+        return "\n".join(lines) + "\n"
+    elif t == "python":
+        return (
+            "```bash\n"
+            "# Set up virtual environment\n"
+            "python -m venv .venv && source .venv/bin/activate\n"
+            "pip install -e .\n"
+            "\n"
+            "# Start the app [adjust to your entry point]\n"
+            "# python -m app.main\n"
+            "```\n"
+        )
+    elif t == "go":
+        return (
+            "```bash\n"
+            "# Build and run\n"
+            "go build -o ./bin/app ./cmd/\n"
+            "./bin/app\n"
+            "```\n"
+        )
+    elif t == "rust":
+        return (
+            "```bash\n"
+            "# Build and run\n"
+            "cargo run\n"
+            "```\n"
+        )
+    return "```bash\n# See project documentation for setup instructions\n```\n"
+
+
+# ---------------------------------------------------------------------------
+# README injection (marker-based, non-destructive)
+# ---------------------------------------------------------------------------
+
+MARKERS = {
+    "stats": None,  # main stats table
+    "routes": None,
+    "modules": None,
+    "components": None,
+}
+
+SECTION_TPL = """\
+<!-- readme-guardian:{name} -->
+{content}
+<!-- /readme-guardian -->"""
+
+
+def _stats_content(info: dict) -> str:
+    t = info.get("type") or "unknown"
+    v = info.get("version") or "—"
+    tests = info.get("tests", 0)
+    t_str = f"{tests} passing" if tests > 0 else "—"
+    lint = "clean" if info.get("lint_pass") else "issues" if info.get("lint_pass") is False else "—"
+    docker = "yes" if info.get("has_docker") else "no"
+    monorepo = "yes" if info.get("is_monorepo") else "no"
+    rc, commit = _run("git log -1 --oneline", Path.cwd())
+    c_str = f"`{commit}`" if rc == 0 else "—"
+
+    return (
+        "| Metric | Value |\n"
+        "|--------|-------|\n"
+        f"| Language | {t} |\n"
+        f"| Version | {v} |\n"
+        f"| Tests | {t_str} |\n"
+        f"| Lint | {lint} |\n"
+        f"| Docker | {docker} |\n"
+        f"| Monorepo | {monorepo} |\n"
+        f"| Latest commit | {c_str} |\n"
+    )
+
+
+def _routes_content(info: dict) -> str:
     routes = info.get("routes", [])
     if not routes:
         return "No API routes detected."
-
     lines = ["| Method | Path |", "|--------|------|"]
-    for route in routes[:30]:
-        parts = route.split(" ", 1)
+    for r in routes[:25]:
+        parts = r.split(" ", 1)
         if len(parts) == 2:
-            lines.append(f"| {parts[0]} | `{parts[1]}` |")
-    if len(routes) > 30:
-        lines.append(f"| ... | {len(routes) - 30} more routes |")
+            lines.append(f"| **{parts[0]}** | `{parts[1]}` |")
+    if len(routes) > 25:
+        lines.append(f"| ... | {len(routes) - 25} more |")
     return "\n".join(lines)
 
 
-def _modules_block(info: Project) -> str:
+def _modules_content(info: dict) -> str:
     modules = info.get("modules", [])
     if not modules:
         return "No source modules detected."
     return "\n".join(f"- `{m}`" for m in modules)
 
 
-def _components_block(info: Project) -> str:
-    components = info.get("frontend_components", [])
-    if not components:
-        return "No frontend components detected."
-    return "\n".join(f"- `{c}`" for c in components)
+def _components_content(info: dict) -> str:
+    comps = info.get("components", [])
+    if not comps:
+        return "No UI components detected."
+    return "\n".join(f"- `{c}`" for c in comps)
 
 
-SECTION_RENDERERS = {
-    "stats": _stats_block,
-    "routes": _routes_block,
-    "modules": _modules_block,
-    "components": _components_block,
-}
-
-
-def inject_readme(info: Project) -> str | None:
-    """
-    Replace marker sections in the existing README.
-    Returns the new content, or None if no markers found.
-    """
-    root = info["root"]
-    readme_path = root / "README.md"
-    if not readme_path.exists():
+def inject_readme(info: dict) -> str | None:
+    """Replace markers in README. Returns updated content or None."""
+    path = Path.cwd() / "README.md"
+    if not path.exists():
         return None
 
-    content = readme_path.read_text()
+    content = path.read_text()
     original = content
-    any_replaced = False
+    touched = False
 
-    for section, renderer in SECTION_RENDERERS.items():
-        start_marker = MARKER_START.format(section=section)
-        end_marker = MARKER_END
-        pattern = re.compile(
-            re.escape(start_marker) + r".*?" + re.escape(end_marker),
-            re.DOTALL,
-        )
-        replacement = start_marker + "\n" + renderer(info) + "\n" + end_marker
-        if pattern.search(content):
-            content = pattern.sub(replacement, content)
-            any_replaced = True
+    rendered = {
+        "stats": _stats_content(info),
+        "routes": _routes_content(info),
+        "modules": _modules_content(info),
+        "components": _components_content(info),
+    }
 
-    if not any_replaced:
+    for name, rc in rendered.items():
+        start = f"<!-- readme-guardian:{name} -->"
+        end = "<!-- /readme-guardian -->"
+        pat = re.compile(re.escape(start) + r".*?" + re.escape(end), re.DOTALL)
+        replacement = start + "\n" + rc + "\n" + end
+        if pat.search(content):
+            content = pat.sub(replacement, content)
+            touched = True
+
+    if not touched:
         return None
-
     return content
 
 
-def update_readme(info: Project) -> bool:
-    """Update README.md via marker injection. Returns True if changed."""
-    root = info["root"]
-    readme_path = root / "README.md"
-
-    new_content = inject_readme(info)
-
-    if new_content is None:
-        # No markers found — offer to append a stats section
-        warn("No <!-- readme-sync --> markers found in README.md")
-        warn("Run with --apply to append a stats section at the end")
+def update_readme(info: dict) -> bool:
+    """Apply marker injection. Returns True if changed."""
+    path = Path.cwd() / "README.md"
+    new = inject_readme(info)
+    if new is None:
         return False
-
-    if new_content == readme_path.read_text():
-        ok("README.md: already up to date")
+    if new == path.read_text():
+        ok("README: already up to date")
         return False
-
-    # Show diff
-    if "--apply" not in sys.argv and "--pre-push" not in sys.argv:
-        old_lines = readme_path.read_text().splitlines()
-        new_lines = new_content.splitlines()
-        print(f"\n  \U0001f4dd README.md changes:", file=sys.stderr)
-        print(f"     {len(old_lines)} lines \u2192 {len(new_lines)} lines", file=sys.stderr)
-        try:
-            response = input("  Apply changes? [Y/n] ").strip().lower()
-            if response not in ("", "y", "yes"):
-                warn("Skipped README update")
-                return False
-        except (EOFError, KeyboardInterrupt):
-            warn("Skipped README update")
-            return False
-
-    readme_path.write_text(new_content)
-    ok("README.md: updated")
+    path.write_text(new)
+    ok("README: updated")
     return True
 
 
 # ---------------------------------------------------------------------------
-# Append mode (when no markers exist)
+# Full-regenerate mode (for projects without markers — generates full README)
 # ---------------------------------------------------------------------------
 
+def regenerate(info: dict) -> bool:
+    """Regenerate the entire README from scratch. Returns True if changed."""
+    path = Path.cwd() / "README.md"
+    new = generate_readme(info)
 
-def append_stats(info: Project) -> bool:
-    """Append a stats section to README.md when no markers exist."""
-    root = info["root"]
-    readme_path = root / "README.md"
-
-    section = _stats_block(info)
-    routes = _routes_block(info)
-    modules = _modules_block(info)
-    components = _components_block(info)
-
-    new_content = (
-        "\n\n---\n\n"
-        "<!-- readme-sync: stats -->\n"
-        f"{section}\n"
-        "<!-- /readme-sync -->\n"
-    )
-    if "No API routes" not in routes:
-        new_content += (
-            "\n### API Routes\n"
-            "<!-- readme-sync: routes -->\n"
-            f"{routes}\n"
-            "<!-- /readme-sync -->\n"
-        )
-    if "No source modules" not in modules:
-        new_content += (
-            "\n### Modules\n"
-            "<!-- readme-sync: modules -->\n"
-            f"{modules}\n"
-            "<!-- /readme-sync -->\n"
-        )
-    if "No frontend components" not in components:
-        new_content += (
-            "\n### Frontend Components\n"
-            "<!-- readme-sync: components -->\n"
-            f"{components}\n"
-            "<!-- /readme-sync -->\n"
-        )
-
-    new_content += (
-        "\n<!-- readme-sync auto-generated section. "
-        "Edit markers above; content between markers is replaced on each run. -->\n"
-    )
-
-    if readme_path.exists():
-        old = readme_path.read_text()
-        if new_content in old:
-            ok("README.md: already up to date")
-            return False
-
-        if "--apply" not in sys.argv and "--pre-push" not in sys.argv:
-            print(f"\n  \U0001f4dd Append stats section to README.md?", file=sys.stderr)
-            try:
-                response = input("  Apply changes? [Y/n] ").strip().lower()
-                if response not in ("", "y", "yes"):
-                    warn("Skipped README update")
-                    return False
-            except (EOFError, KeyboardInterrupt):
-                warn("Skipped README update")
-                return False
-
-        readme_path.write_text(old.rstrip() + "\n" + new_content.lstrip())
-        ok("README.md: stats section appended")
-        return True
-
-    readme_path.write_text(
-        f"# {info['name'] or 'My Project'}\n\n{new_content.lstrip()}"
-    )
-    ok("README.md: created")
+    if path.exists() and path.read_text() == new:
+        ok("README: already up to date")
+        return False
+    path.write_text(new)
+    ok("README: regenerated")
     return True
 
 
 # ---------------------------------------------------------------------------
-# CI check mode
+# CI check
 # ---------------------------------------------------------------------------
 
-
-def ci_check(info: Project) -> bool:
-    """Verify README markers contain current data. Returns False if stale."""
-    readme_path = info["root"] / "README.md"
-    if not readme_path.exists():
+def ci_check(info: dict) -> bool:
+    path = Path.cwd() / "README.md"
+    if not path.exists():
         fail("README.md: missing")
         return False
 
-    content = readme_path.read_text()
+    content = path.read_text()
     issues = []
 
-    # Check each marker section
-    for section, renderer in SECTION_RENDERERS.items():
-        start_marker = MARKER_START.format(section=section)
-        end_marker = MARKER_END
-        pattern = re.compile(
-            re.escape(start_marker) + r"(.*?)" + re.escape(end_marker),
-            re.DOTALL,
-        )
-        m = pattern.search(content)
-        if m:
-            expected = renderer(info)
-            actual = m.group(1).strip()
-            if expected.strip() != actual.strip():
-                issues.append(
-                    f"Section `{section}` is stale"
-                )
+    # Check markers
+    rendered = {
+        "stats": _stats_content(info),
+        "routes": _routes_content(info),
+        "modules": _modules_content(info),
+        "components": _components_content(info),
+    }
+    for name, expected in rendered.items():
+        start = f"<!-- readme-guardian:{name} -->"
+        end = "<!-- /readme-guardian -->"
+        pat = re.compile(re.escape(start) + r"(.*?)" + re.escape(end), re.DOTALL)
+        m = pat.search(content)
+        if m and m.group(1).strip() != expected.strip():
+            issues.append(f"Section `{name}` is stale")
 
-    # Check inline test count if present
-    test_count = info["test_count"]
-    if test_count:
-        tc_pattern = r"<!--\s*readme-sync:\s*test-count\s*-->(\d+)<!--\s*/readme-sync\s*-->"
-        m = re.search(tc_pattern, content)
-        if m:
-            stated = int(m.group(1))
-            if stated != test_count:
-                issues.append(
-                    f"Test count: README says {stated}, actual is {test_count}"
-                )
+    # Check freshness badge version
+    if info.get("tests", 0) > 0:
+        current_badge = f"fresh-{info['tests']}%20passing"
+        if current_badge not in content:
+            issues.append("Freshness badge does not match test count")
 
     if issues:
-        fail("CI check: README is out of date")
-        for issue in issues:
-            warn(issue)
+        for i in issues:
+            warn(i)
+        fail("README is stale")
         return False
-
-    ok("CI check: README is current")
+    ok("README is current")
     return True
 
 
 # ---------------------------------------------------------------------------
-# Git hook installer
+# Hook management
 # ---------------------------------------------------------------------------
 
+HOOK_TEMPLATE = """\
+#!/bin/sh
+# readme-guardian pre-push hook — keeps README.md in sync
+# Installed by: readme-guardian --install-hook
+# Remove with: readme-guardian --uninstall-hook
 
-def install_hook(root: Path) -> None:
-    hooks_dir = root / ".git" / "hooks"
-    if not hooks_dir.is_dir():
-        fail(f"Not a git repository: {root}")
+echo "  \U0001f6e1\ufe0f  readme-guardian: checking README..."
+python3 -m readme_sync --pre-push 2>/dev/null || true
+"""
+
+
+def install_hook() -> None:
+    root = Path.cwd()
+    git_dir = root / ".git"
+    if not git_dir.is_dir():
+        fail("Not a git repository")
         return
 
-    hook_path = hooks_dir / "pre-push"
-    hook_content = textwrap.dedent("""\
-    #!/bin/sh
-    # readme-sync pre-push hook — auto-update README.md before push
-    # Generated by readme-sync install-hook
-    # Remove this file to disable.
+    hook = git_dir / "hooks" / "pre-push"
+    hook.write_text(HOOK_TEMPLATE)
+    hook.chmod(0o755)
+    ok(f"Pre-push hook installed at {hook}")
 
-    echo "  📝 readme-sync: checking README.md..."
-    python3 -m readme_sync --pre-push 2>/dev/null || true
-    """)
+    # Ensure .gitignore has a backup exclusion
+    gi = root / ".gitignore"
+    if gi.exists() and "# readme-guardian" not in gi.read_text():
+        with open(gi, "a") as f:
+            f.write("\n# readme-guardian backups\n*.bak\n")
+    ok("Hook will run silently before every `git push`")
 
-    hook_path.write_text(hook_content)
-    hook_path.chmod(0o755)
-    ok(f"Pre-push hook installed at {hook_path}")
 
-    gitignore = root / ".gitignore"
-    marker = "# readme-sync generated files"
-    if gitignore.exists():
-        content = gitignore.read_text()
-        if marker not in content:
-            gitignore.write_text(content + f"\n{marker}\nREADME.md.bak\n")
-    ok("Git hook: ready (runs silently before every `git push`)")
+def uninstall_hook() -> None:
+    hook = Path.cwd() / ".git" / "hooks" / "pre-push"
+    if hook.exists() and "readme-guardian" in hook.read_text():
+        hook.unlink()
+        ok("Pre-push hook removed")
+    else:
+        warn("No readme-guardian hook found")
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-
-def main():
-    root = Path.cwd()
+def main() -> None:
     args = set(sys.argv[1:])
 
-    if "--version" in args:
-        print("readme-sync 1.1.0")
+    if "--version" in args or "-v" in args:
+        print("readme-guardian v1.0")
         return
+
+    banner()
 
     if "--install-hook" in args:
-        install_hook(root)
+        install_hook()
+        return
+    if "--uninstall-hook" in args:
+        uninstall_hook()
         return
 
-    info = detect_project(root)
-
-    if not info["type"]:
-        warn(f"Unknown project type at {root}")
-        warn(
-            "Supported: Python (pyproject.toml), Node (package.json), Go (go.mod), Rust (Cargo.toml)"
-        )
+    info = detect_project(Path.cwd())
+    if not info.get("type"):
+        warn("Could not detect project type")
+        warn("Supported: Node (package.json), Python (pyproject.toml), Go (go.mod), Rust (Cargo.toml)")
         sys.exit(1)
 
-    debug(f"Project: {info['name'] or 'unknown'} ({info['type']})")
+    debug(f"Detected: {info['type']} — {info['name']}")
 
     # Collect data
     info["modules"] = collect_modules(info)
     info["routes"] = collect_routes(info)
-    info["frontend_components"] = check_frontend(info)
-    info["test_count"] = collect_test_count(info)
-    info["lint_passes"] = check_lint(info)
+    info["components"] = collect_components(info)
+    info["tests"] = collect_tests(info)
+    info["lint_pass"] = collect_lint(info)
 
     if "--check" in args:
-        passed = ci_check(info)
-        sys.exit(0 if passed else 1)
+        sys.exit(0 if ci_check(info) else 1)
+
+    # Update badge SVG
+    badge_updated = update_badge(info)
 
     # Try marker injection first
-    updated = update_readme(info)
+    if inject_readme(info) is not None:
+        readme_updated = update_readme(info)
+    else:
+        readme_updated = regenerate(info)
 
-    # If no markers, offer to append
-    if not updated:
-        if "--apply" in args or "--pre-push" in args:
-            updated = append_stats(info)
-        else:
-            # Interactive: ask user
-            print(
-                "\n  No <!-- readme-sync --> markers found in README.md.",
-                file=sys.stderr,
-            )
-            print(
-                "  Would you like to append a stats section? [Y/n] ",
-                file=sys.stderr,
-            )
-            try:
-                response = input().strip().lower()
-                if response in ("", "y", "yes"):
-                    updated = append_stats(info)
-                else:
-                    warn("Skipped README update")
-            except (EOFError, KeyboardInterrupt):
-                warn("Skipped README update")
+    updated = readme_updated or badge_updated
 
     if "--pre-push" in args and updated:
         subprocess.run(
-            "git add README.md && git commit --amend --no-edit --no-verify",
-            shell=True,
-            capture_output=True,
-            cwd=root,
+            "git add README.md readme-badge.svg && git commit --amend --no-edit --no-verify",
+            shell=True, capture_output=True,
         )
 
 

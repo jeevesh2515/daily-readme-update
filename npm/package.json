@@ -1,0 +1,36 @@
+{
+  "name": "readme-guardian",
+  "version": "1.0.0",
+  "description": "The README freshness guarantee for vibe coders. Auto-syncs README.md with live data before every push.",
+  "keywords": [
+    "readme",
+    "documentation",
+    "vibe-coding",
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "opencode",
+    "git-hooks",
+    "freshness",
+    "badge"
+  ],
+  "homepage": "https://github.com/jeevesh2515/readme-guardian",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeevesh2515/readme-guardian.git"
+  },
+  "license": "MIT",
+  "author": "Jeevesh Singale",
+  "bin": {
+    "readme-guardian": "./cli.js",
+    "readme-sync": "./cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "preferUnplugged": true,
+  "scripts": {
+    "postinstall": "node -e \"try{require('child_process').execSync('pipx install readme-guardian 2>/dev/null',{stdio:'pipe'})}catch(e){}\"",
+    "readme-guardian": "node ./cli.js"
+  }
+}

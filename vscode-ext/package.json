@@ -1,0 +1,63 @@
+{
+  "name": "readme-guardian",
+  "displayName": "🛡️ README Guardian",
+  "description": "Auto-sync your README with live data. Freshness badge in your status bar.",
+  "version": "1.0.0",
+  "publisher": "jeevesh2515",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jeevesh2515/readme-guardian"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Formatters",
+    "Linters"
+  ],
+  "keywords": [
+    "readme",
+    "documentation",
+    "vibe-coding",
+    "freshness",
+    "badge",
+    "git-hooks"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "readme-guardian.sync",
+        "title": "🛡️ README Guardian: Sync README Now"
+      },
+      {
+        "command": "readme-guardian.installHook",
+        "title": "🛡️ README Guardian: Install Pre-Push Hook"
+      },
+      {
+        "command": "readme-guardian.check",
+        "title": "🛡️ README Guardian: Check Freshness"
+      }
+    ],
+    "configuration": {
+      "title": "README Guardian",
+      "properties": {
+        "readme-guardian.runOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-sync README on every file save"
+        },
+        "readme-guardian.autoInstallHook": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-install pre-push hook on workspace open"
+        }
+      }
+    }
+  }
+}

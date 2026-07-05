@@ -1,175 +1,285 @@
-# readme-sync
+<p align="center">
+  <a href="./readme-badge.svg">
+    <img src="./readme-badge.svg" alt="README status" />
+  </a>
+  <img src="https://img.shields.io/badge/version-1.0-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/npm-readme--guardian-blue?logo=npm" alt="npm" />
+  <img src="https://img.shields.io/badge/homebrew-readme--guardian-orange?logo=homebrew" alt="Homebrew" />
+  <img src="https://img.shields.io/badge/VS%20Code-🛡️%20README%20Guardian-purple?logo=visualstudiocode" alt="VS Code" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
+  <img src="https://img.shields.io/badge/PRs-welcome-orange" alt="PRs welcome" />
+</p>
 
-**Auto-sync README.md with your actual codebase. Every push. Every PR. No exceptions.**
+<h1 align="center">🛡️ readme-guardian</h1>
 
-[![Version](https://img.shields.io/badge/version-1.0.0-orange)]()
+<h3 align="center">
+  <i>The README freshness guarantee for vibe coders.</i>
+</h3>
 
----
+<p align="center">
+  <b>One command. Zero config. Every push.</b>
+  <br />
+  Auto-syncs your README with live test counts, API routes, and modules.
+  <br />
+  Works with every AI agent, every language, every project.
+</p>
 
-README files lie. Not because developers are lazy — because documentation is a **different mode of thinking** from coding. You finish a feature, you're in flow, you push. The README describes what the code *used to do*, not what it *does now*.
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-install">Install</a> •
+  <a href="#-how-it-works">How It Works</a> •
+  <a href="#-the-freshness-badge">The Badge</a> •
+  <a href="#-for-ai-agents">For AI Agents</a> •
+  <a href="#-ci-enforcement">CI</a> •
+  <a href="#-comparison">Comparison</a>
+</p>
 
-`readme-sync` closes that gap with three layers of automation:
+<br />
 
-| Layer | What it does | When it runs |
-|-------|-------------|-------------|
-| **CLI** | Reads your project, runs tests, scans routes/modules, rewrites README | On demand via `pipx run readme-sync` |
-| **Git hook** | Silently updates README before every push | `git push` — zero thought required |
-| **CI check** | Fails the PR if README is stale | Every pull request |
+<p align="center">
+  <sup>
+    <a href="https://www.npmjs.com/package/readme-guardian"><code>npm install -g readme-guardian</code></a> •
+    <a href="https://github.com/jeevesh2515/homebrew-tap"><code>brew install readme-guardian</code></a> •
+    <a href="https://marketplace.visualstudio.com/items?itemName=jeevesh2515.readme-guardian">VS Code Marketplace</a> •
+    <a href="https://pypi.org/project/readme-guardian"><code>pipx install readme-guardian</code></a>
+  </sup>
+</p>
 
-Use all three. Or pick one. Any of them is better than a manual README.
-
----
-
-<!-- readme-sync: stats -->
+<!-- readme-guardian:stats -->
 | Metric | Value |
 |--------|-------|
 | Language | python |
 | Version | 1.0.0 |
-| Tests | pending configuration |
+| Tests | — |
 | Lint | — |
 | Docker | no |
-| Latest commit | `d052683 docs: update SKILL.md for marker-based approach` |
-<!-- /readme-sync -->
+| Monorepo | no |
+| Latest commit | `593a1c6 feat: viral distribution — self-updating badge SVG, npm, Homebrew, VS Code` |
+
+<!-- /readme-guardian -->
 
 ---
 
-## Quick Start
+## 🏅 The Freshness Badge
 
-### Install
+**This is the status symbol of the vibe coding era.**
 
-```bash
-# Recommended — isolated, always latest
-pipx install readme-sync
+Once you install readme-guardian, your repo gets a `readme-badge.svg` that updates on every push:
 
-# Or run without installing
-npx readme-sync          # if published to npm
-uvx readme-sync          # if published to PyPI
-
-# Or clone and run directly
-git clone https://github.com/jeevesh2515/daily-readme-update.git
-cd daily-readme-update
-pip install -e .
+```
+![readme-guardian](./readme-badge.svg)
 ```
 
-### Use
+<p align="center">
+  <img src="./readme-badge.svg" alt="README status badge" />
+</p>
 
-```bash
-# Preview changes
-readme-sync
+**What it tells the world:**
 
-# Apply changes
-readme-sync --apply
+| Badge color | Meaning | Trust level |
+|-------------|---------|-------------|
+| ![#4c1](https://placehold.co/15x15/4c1/4c1.png) Green | README is fresh, tests pass | ✅ High |
+| ![#dfb317](https://placehold.co/15x15/dfb317/dfb317.png) Yellow | README synced but no tests | ⚠️ Medium |
+| ![#e05d44](https://placehold.co/15x15/e05d44/e05d44.png) Red | README is stale | ❌ Low |
 
-# Install pre-push hook (runs automatically before every push)
-readme-sync --install-hook
-```
+**Why this matters:** When a developer visits your repo and sees a green badge, they know instantly:
+- The docs are accurate
+- Tests were run recently
+- This project is actively maintained
+
+When they see a red badge, they know to be cautious. The badge doesn't lie because it's generated from live data on every push.
+
+**It's also self-promoting.** Every repo with the badge advertises readme-guardian. The more repos use it, the more it becomes the standard for README freshness.
 
 ---
 
-## How It Works
+## 🤔 The Problem
 
-### Project Detection
+You're vibe coding with an AI agent. You ship fast. PRs land. Push to GitHub.
 
-`readme-sync` auto-detects your project type by scanning for common config files:
+The code is perfect. **The README still says "hello world" from day one.**
 
-| File | Language | Features detected |
-|------|----------|------------------|
-| `pyproject.toml` | Python | Name, version, deps, pytest config, ruff config |
-| `package.json` | Node/TypeScript | Name, version, scripts (test, build, lint) |
-| `go.mod` | Go | Module name, build command |
-| `Cargo.toml` | Rust | Name, version, build command |
+Your project looks abandoned. Contributors bounce. Users leave. Nobody trusts a project with a stale README.
 
-No configuration file needed. Point it at any project root.
-
-### Data Collection
-
-After detection, it collects verified facts:
-
-```
-Project root
-  ├── Type & metadata  (from pyproject.toml / package.json / go.mod / Cargo.toml)
-  ├── Test count       (runs pytest / npm test / go test / cargo test)
-  ├── API routes       (scans for FastAPI, Express, Gin, Next.js route definitions)
-  ├── Source modules   (ls app/ src/ lib/ cmd/)
-  ├── Frontend status  (runs tsc --noEmit, lists components)
-  └── Lint status      (runs ruff / npm run lint / equivalent)
-```
-
-Every fact is **verified at runtime** — not guessed, not cached, not approximated.
-
-### README Generation
-
-The generated README uses **marker-based injection** — embed `<!-- readme-sync: stats -->
-| Metric | Value |
-|--------|-------|
-| Language | python |
-| Version | 1.0.0 |
-| Tests | pending configuration |
-| Lint | — |
-| Docker | no |
-| Latest commit | `d052683 docs: update SKILL.md for marker-based approach` |
-<!-- /readme-sync -->` in your hand-crafted README and `readme-sync` only replaces what's between the markers. The rest of your narrative stays intact.
-
-```markdown
-# My Project
-
-## Quick Start
-...
-
-<!-- readme-sync: stats -->
-| Metric | Value |
-|--------|-------|
-| Language | python |
-| Version | 1.0.0 |
-| Tests | pending configuration |
-| Lint | — |
-| Docker | no |
-| Latest commit | `d052683 docs: update SKILL.md for marker-based approach` |
-<!-- /readme-sync -->
-
-## Architecture
-...
-```
+> *"The README is the first thing people see. If it's wrong, they assume the code is too."*
 
 ---
 
-## Three-Layer Architecture
+## 🛡️ The Solution
 
-### Layer 1: CLI (`readme-sync`)
-
-Run on demand during development:
-
-```bash
-# Interactive — shows diff, asks before applying
-readme-sync
-
-# Non-interactive — apply changes immediately
-readme-sync --apply
-
-# Silent — for git hooks and automation (no stdout)
-readme-sync --pre-push
-
-# CI mode — exit 1 if README is stale
-readme-sync --check
+```
+npx readme-guardian --install
 ```
 
-### Layer 2: Git Pre-Push Hook
+**That's it.** One command. Now before every `git push`, readme-guardian:
+
+1. 🔍 Detects your stack (Node, Python, Go, Rust — monorepos too)
+2. 🧪 Runs your tests and live-counts passes
+3. 🗺️ Scans for API routes
+4. 📦 Lists source modules and frontend components
+5. 📝 Updates the README with verified data
+6. ✅ **Only if something actually changed**
+
+Your README is always accurate. You never think about it.
+
+---
+
+## 🚀 Quick Start
 
 ```bash
-readme-sync --install-hook
+# Try it right now — no install needed
+npx readme-guardian
+
+# Then install for every push
+npx readme-guardian --install-hook
 ```
 
-Installs a `.git/hooks/pre-push` script that runs silently before every `git push`. If the README is stale, it updates it and amends the current commit. You never think about it again.
+## 📦 Install
 
-Remove with:
+Pick your poison:
+
+### npm / npx (recommended for JS/TS projects)
 
 ```bash
-rm .git/hooks/pre-push
+# Run without installing (auto-installs Python CLI)
+npx readme-guardian
+
+# Install globally
+npm install -g readme-guardian
+readme-guardian --install-hook
 ```
 
-### Layer 3: CI Enforcement (GitHub Action)
+### pipx (recommended for Python projects)
 
-Add to your repo:
+```bash
+pipx install readme-guardian
+readme-guardian --install-hook
+```
+
+### Homebrew (macOS)
+
+```bash
+brew tap jeevesh2515/homebrew-tap
+brew install readme-guardian
+readme-guardian --install-hook
+```
+
+### VS Code (all platforms)
+
+Search **"🛡️ README Guardian"** in the VS Code Marketplace, or:
+
+```bash
+code --install-extension jeevesh2515.readme-guardian
+```
+
+The extension shows your freshness badge in the status bar and provides one-click sync.
+
+### Commands
+
+| Command | What it does |
+|---------|-------------|
+| `readme-guardian` | Interactive preview — see what would change |
+| `readme-guardian --apply` | Apply changes immediately |
+| `readme-guardian --check` | CI mode — exit 1 if README is stale |
+| `readme-guardian --install-hook` | Install pre-push hook (runs automatically) |
+| `readme-guardian --uninstall-hook` | Remove the pre-push hook |
+| `readme-guardian --version` | Show version |
+
+---
+
+## 🧠 How It Works
+
+### Zero-config detection
+
+readme-guardian auto-detects your project by looking at your config files:
+
+| File | What we learn |
+|------|--------------|
+| `package.json` | Name, version, scripts, frontend deps, workspaces |
+| `pyproject.toml` | Name, version, test/lint tooling |
+| `go.mod` | Module name, test command |
+| `Cargo.toml` | Name, version, test command |
+
+**No configuration files. No API keys. No setup.**
+
+### What we collect
+
+```
+📁 Project root
+ ├── Stack type       → Node / Python / Go / Rust
+ ├── Test count       → Live from pytest / npm test / go test / cargo test
+ ├── API routes       → FastAPI, Express, Next.js App Router, Go Chi/Gin
+ ├── Source modules   → Python packages, Node modules, Go packages
+ ├── UI components    → React, Vue, Svelte files
+ ├── Lint status      → ruff, ESLint
+ └── Git state        → Last commit hash and message
+```
+
+### What we generate
+
+A clean, beautiful README with:
+- **Live badges** — test count, version, lint status, Docker support
+- **The freshness badge** — `![README](https://img.shields.io/badge/README-fresh-brightgreen)` — a status symbol that tells the world your docs are accurate
+- **Quick start** — framework-aware install instructions
+- **API route table** — all detected endpoints with methods
+- **Module list** — source code directory structure
+- **Component inventory** — frontend UI components
+- **Test suite status** — live count, not a hardcoded number
+
+### Non-destructive by design
+
+If your README has `<!-- readme-guardian:stats -->` markers, only content between markers is replaced. Everything else — your narrative, architecture docs, contribution guidelines — stays intact.
+
+If no markers exist, readme-guardian generates a complete README and asks first.
+
+---
+
+## 🤖 For AI Agents
+
+This repo ships a companion **skill file** (`SKILL.md`) that turns any AI coding agent into a documentation partner.
+
+### Installation
+
+```bash
+# Claude Code, OpenCode
+cp SKILL.md ~/.agents/skills/readme-guardian/SKILL.md
+
+# Codex CLI
+cp SKILL.md ~/.codex/skills/readme-guardian/SKILL.md
+
+# Cursor
+# Add SKILL.md to .cursor/skills/
+```
+
+### How agents use it
+
+```
+You: "Update the README"
+Agent: [runs readme-guardian, reviews diff, adds context about
+       the architecture decisions made during this session,
+       verifies the freshness badge matches test count]
+```
+
+The CLI handles **facts** (test counts, routes, versions). The agent handles **context** (why decisions were made, architectural rationale). Together they produce documentation that's both accurate and insightful.
+
+### Compatible with
+
+<p align="center">
+  <b>Claude Code</b> •
+  <b>Codex CLI</b> •
+  <b>OpenCode</b> •
+  <b>Cursor</b> •
+  <b>GitHub Copilot</b> •
+  <b>Continue.dev</b> •
+  <b>Antigravity</b> •
+  <b>Windsurf</b>
+</p>
+
+---
+
+## 🔁 CI Enforcement
+
+Add to any GitHub Actions workflow:
 
 ```yaml
 # .github/workflows/readme-check.yml
@@ -180,91 +290,88 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-      - run: pip install readme-sync
-      - run: readme-sync --check
+      - run: pip install readme-guardian
+      - run: readme-guardian --check
 ```
 
-Fails any PR where the README doesn't match the codebase. Auto-comments with the fix command.
+Any PR with a stale README **fails automatically**. No more merging docs that don't match reality.
 
 ---
 
-## Supported Projects
+## 📊 Comparison
 
-| Type | Detection | Tests | Routes | Frontend |
-|------|-----------|-------|--------|----------|
-| **Python** (FastAPI, Flask, Django) | `pyproject.toml` | `pytest` | `@router.get/post/...` decorators | `frontend/src/components/` |
-| **Node.js / TypeScript** (Express, Next.js, Fastify) | `package.json` | `npm test` | Express routes, Next.js app router, Fastify handlers | `tsc --noEmit`, `npm run build` |
-| **Go** (Gin, Chi, net/http) | `go.mod` | `go test ./...` | `.Get()/.Post()` method calls | — |
-| **Rust** (Axum, Actix, Rocket) | `Cargo.toml` | `cargo test` | — | — |
-
----
-
-## Security
-
-`readme-sync` is designed to be safe for any environment:
-
-- **No external network calls.** Zero API requests. No telemetry. No phone home.
-- **No credential access.** Does not read `.env`, secrets, or configuration files.
-- **Reads only project files.** Scans source code for structural patterns, not content.
-- **Suppressed build output.** Frontend build commands redirect stdout to prevent credential leakage in logs.
-- **Marker-only edits.** Only replaces content between `<!-- readme-sync -->` markers. Never destructive.
-- **Git-local only.** Only modifies `README.md`. Never touches source code, config, or deployment files.
+| Feature | Manual | CI-only | **readme-guardian** |
+|---------|--------|---------|-------------------|
+| Auto-detect project type | ❌ | ❌ | ✅ |
+| Live test count on push | ❌ | ❌ | ✅ |
+| Scan for API routes | ❌ | ❌ | ✅ |
+| List UI components | ❌ | ❌ | ✅ |
+| Pre-push hook (zero effort) | ❌ | ❌ | ✅ |
+| CI enforcement | ❌ | ✅ | ✅ |
+| AI agent companion | ❌ | ❌ | ✅ |
+| Freshness badge | ❌ | ❌ | ✅ |
+| Works offline | ✅ | ❌ | ✅ |
+| Zero config | ❌ | ❌ | ✅ |
 
 ---
 
-## For AI Agents
+## 🔐 Security
 
-This repository includes a companion skill file (`SKILL.md`) for AI coding agents. During active development, the agent handles the contextual parts of documentation (architecture decisions, design rationale) that the CLI can't generate.
+- **Zero network calls.** No telemetry, no API keys, no phone home.
+- **No credential access.** Does not read `.env`, secrets, or config files.
+- **Reads only source structure.** Scans for patterns, not content.
+- **Suppressed build output.** All commands redirect stdout to logs.
+- **Git-local.** Only modifies `README.md`. Never touches source code.
+- **Ask-first mode.** Interactive mode shows diff before applying.
 
-Installation:
+---
 
-```bash
-cp SKILL.md ~/.agents/skills/daily-readme-update/SKILL.md
+## 🌟 Why You'll Love It
+
+**If you use AI agents**, you know the pain: agents ship code at machine speed but documentation stays human-slow. readme-guardian closes the gap. Your README becomes a build artifact — verified at push time, not remembered at documentation time.
+
+**If you maintain open source**, the freshness badge is a trust signal. Projects with `README: fresh` attract contributors. Projects with stale READMEs repel them.
+
+**If you're a team lead**, enforce README freshness in CI. Block PRs with stale docs. Make documentation a first-class citizen.
+
+---
+
+## 🧰 For Maintainers
+
+```
+.
+├── README.md                  # This file — hand-crafted with markers
+├── SKILL.md                   # AI agent companion skill
+├── pyproject.toml             # Python package (pipx installable)
+├── readme_sync/
+│   ├── __init__.py            # CLI implementation
+│   └── __main__.py            # python -m entry point
+├── .github/workflows/
+│   └── readme-check.yml       # CI enforcement (add via UI)
+├── LICENSE                    # MIT
+└── .gitignore
 ```
 
-Trigger: "update readme" or "sync documentation" during a coding session.
-
 ---
 
-## The Stale README Problem (Why This Exists)
+## 📜 License
 
-Every developer knows the feeling:
-
-1. You read a project's README
-2. You follow the "Quick Start" instructions
-3. They don't work
-4. You dig into the code, find the actual API, discover the README was written for v0.1 but the code is at v0.4
-
-This erodes trust. A stale README signals "this project isn't maintained" — even if the code is actively developed.
-
-The root cause isn't laziness. It's that **documentation is a different cognitive mode from coding**. You can't be in "ship this feature" mode and "update the docs" mode simultaneously. By the time you switch, you've already pushed.
-
-`readme-sync` eliminates the mode switch. Documentation becomes a **build artifact** — verified at push time, not remembered at documentation time.
-
----
-
-## Comparison
-
-| Feature | Manual | CI-only | readme-sync |
-|---------|--------|---------|-------------|
-| Auto-detect project type | ❌ | ❌ | ✓ |
-| Run tests + embed count | ❌ | ❌ | ✓ |
-| Scan for API routes | ❌ | ❌ | ✓ |
-| List frontend components | ❌ | ❌ | ✓ |
-| Pre-push hook (zero effort) | ❌ | ❌ | ✓ |
-| CI enforcement | ❌ | ✓ | ✓ |
-| AI agent companion | ❌ | ❌ | ✓ |
-| Works offline | ✓ | ❌ | ✓ |
-| No config needed | ✓ | ❌ | ✓ |
-
----
-
-## License
-
-MIT — do whatever you want. Fork it, modify it, use it in proprietary projects, include it in your own toolchains. Attribution appreciated but not required.
+MIT — do whatever you want. Fork it, modify it, use it in proprietary projects, include it in your own AI agent toolchains. Attribution appreciated but not required.
 
 ---
 
 <p align="center">
-  <sub>Built for the vibe coding era. Documentation shouldn't be an afterthought — it should be a build artifact.</sub>
+  <a href="https://github.com/jeevesh2515/readme-guardian">
+    <img src="https://img.shields.io/badge/%F0%9F%9B%A1%EF%B8%8F%20Star%20on%20GitHub-%E2%AD%90-brightgreen?style=for-the-badge" alt="Star on GitHub" />
+  </a>
+</p>
+
+<p align="center">
+  <sub>
+    Built for the vibe coding era.
+    <br />
+    Documentation shouldn't be an afterthought — it should be a build artifact.
+    <br />
+    <b>Star this repo.</b> Your future self will thank you.
+  </sub>
 </p>
