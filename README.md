@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/version-1.0-blue" alt="Version" />
   <img src="https://img.shields.io/badge/npm-readme--guardian-blue?logo=npm" alt="npm" />
   <img src="https://img.shields.io/badge/homebrew-readme--guardian-orange?logo=homebrew" alt="Homebrew" />
-  <img src="https://img.shields.io/badge/VS%20Code-🛡️%20README%20Guardian-purple?logo=visualstudiocode" alt="VS Code" />
+
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
   <img src="https://img.shields.io/badge/PRs-welcome-orange" alt="PRs welcome" />
 </p>
@@ -40,7 +40,6 @@
   <sup>
     <a href="https://www.npmjs.com/package/readme-guardian"><code>npm install -g readme-guardian</code></a> •
     <a href="https://github.com/jeevesh2515/homebrew-tap"><code>brew install readme-guardian</code></a> •
-    <a href="https://marketplace.visualstudio.com/items?itemName=jeevesh2515.readme-guardian">VS Code Marketplace</a> •
     <a href="https://pypi.org/project/readme-guardian"><code>pipx install readme-guardian</code></a>
   </sup>
 </p>
@@ -54,7 +53,7 @@
 | Lint | — |
 | Docker | no |
 | Monorepo | no |
-| Latest commit | `593a1c6 feat: viral distribution — self-updating badge SVG, npm, Homebrew, VS Code` |
+| Latest commit | `205361a cleanup: remove VS Code extension, update Homebrew install cmd` |
 
 <!-- /readme-guardian -->
 
@@ -159,20 +158,9 @@ readme-guardian --install-hook
 ### Homebrew (macOS)
 
 ```bash
-brew tap jeevesh2515/homebrew-tap
-brew install readme-guardian
+brew install jeevesh2515/homebrew-tap/readme-guardian
 readme-guardian --install-hook
 ```
-
-### VS Code (all platforms)
-
-Search **"🛡️ README Guardian"** in the VS Code Marketplace, or:
-
-```bash
-code --install-extension jeevesh2515.readme-guardian
-```
-
-The extension shows your freshness badge in the status bar and provides one-click sync.
 
 ### Commands
 
@@ -346,8 +334,8 @@ Any PR with a stale README **fails automatically**. No more merging docs that do
 ├── readme_sync/
 │   ├── __init__.py            # CLI implementation
 │   └── __main__.py            # python -m entry point
-├── .github/workflows/
-│   └── readme-check.yml       # CI enforcement (add via UI)
+├── .github/workflows/         # CI enforcement (copy to your repo)
+│   └── readme-check.yml
 ├── LICENSE                    # MIT
 └── .gitignore
 ```

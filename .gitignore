@@ -6,4 +6,6 @@ __pycache__/
 dist/
 build/
 *.bak
-.github/workflows/
+npm/node_modules/
+
+.github/workflows/readme-check.yml
