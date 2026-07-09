@@ -1,41 +1,33 @@
 ---
 name: readme-guardian
 description: |
-  The README freshness guarantee for vibe coders. Auto-syncs README.md
-  with live data (test counts, API routes, modules, components) before
-  every push. Zero config. Works with any project and any AI agent.
-  WHEN: "update readme", "sync readme", "readme after implementation",
-  "daily readme", "post-ship readme", "document changes", "sync docs",
-  "freshness badge", "keep readme current", "readme is stale".
+  Keep README.md current after coding work by checking, previewing, and
+  updating readme-guardian managed facts such as test status, API routes,
+  modules, UI components, project version, Docker support, monorepo status,
+  latest commit, and readme-badge.svg. Use when the user asks to update,
+  sync, check, verify, refresh, or maintain a README after implementation,
+  refactors, PR preparation, daily docs updates, post-ship documentation,
+  freshness badges, stale README fixes, or AI/vibe-coding documentation drift.
 ---
 
-# 🛡️ readme-guardian — AI Agent Companion Skill
+# readme-guardian AI Agent Companion Skill
 
-This skill turns any AI coding agent into a documentation partner. It handles the **contextual parts** of documentation that the CLI can't generate — architecture decisions, design rationale, usage patterns.
+Use this skill to keep README.md honest while a project changes quickly. Let the CLI handle mechanical facts. Add only the contextual documentation that requires judgment: what changed, why it matters, how users should use it, and any migration notes.
 
-For push-time automation (the "forget about it" layer), install the CLI + pre-push hook:
+For push-time automation, install the CLI and pre-push hook:
 
 ```bash
 pipx install readme-guardian
 readme-guardian --install-hook
 ```
 
-## When To Use This Skill
+## Workflow
 
-| Scenario | What happens |
-|----------|-------------|
-| **After implementing a feature** | Agent updates docs while code is fresh in context |
-| **Before opening a PR** | Catch doc gaps before CI blocks the merge |
-| **After a refactor** | Routes changed, modules renamed, deps swapped |
-| **During code review** | Verify README accurately describes what was reviewed |
-| **When user says "update readme"** | Agent runs CLI, reviews diff, adds context |
-
-## How AI Agents Use This
-
-### Step 1: Detect what changed
+1. Inspect the repository changes before touching docs:
 
 ```bash
-git diff --stat HEAD~1..HEAD
+git status --short
+git diff --stat
 ```
 
 Categorize each changed file:
@@ -48,17 +40,25 @@ Categorize each changed file:
 | `tests/*.py`, `*.test.ts` | Test count changed → update badge |
 | `package.json`, `pyproject.toml` | Dependencies changed → update stack |
 
-### Step 2: Run the CLI (fast path)
+2. Check README freshness without writing files:
+
+```bash
+readme-guardian --status
+```
+
+Use plain `readme-guardian` when you want a unified diff preview of the exact README.md and readme-badge.svg changes.
+
+3. Apply mechanical README and badge updates when the user wants docs updated:
 
 ```bash
 readme-guardian --apply
 ```
 
-This handles mechanical updates (test count, routes, modules, badges). Review the diff.
+This updates only README.md and readme-badge.svg. With markers such as `<!-- readme-guardian:stats -->`, it replaces only managed sections. Without markers, it previews by default and regenerates only when `--apply` is explicit.
 
-### Step 3: Add human context
+4. Review the diff and add human context if needed:
 
-The CLI handles *facts*. You handle *insight*:
+The CLI handles facts. Add insight:
 
 ```
 "What changed → why → how does it work → what should users know"
@@ -71,18 +71,31 @@ Good additions:
 - Migration notes for breaking changes
 - ASCII architecture diagrams for complex flows
 
-### Step 4: Verify
+5. Verify before finishing:
 
 ```bash
 readme-guardian --check
 ```
 
-### Step 5: Commit
+`--check` exits 0 when README.md and readme-badge.svg match the current project facts. It exits 1 when either file is stale.
+
+6. Commit docs with the relevant code or as a focused docs commit:
 
 ```bash
 git add README.md
 git commit -m "docs: sync README"
 ```
+
+## CLI Commands
+
+| Command | Use |
+|---------|-----|
+| `readme-guardian` | Preview exact README.md and badge changes without writing. |
+| `readme-guardian --status` | Show whether README.md and readme-badge.svg are current. |
+| `readme-guardian --apply` | Write README.md and readme-badge.svg updates. |
+| `readme-guardian --check` | CI-safe check; exit 1 when docs are stale. |
+| `readme-guardian --install-hook` | Install a pre-push hook that applies updates automatically. |
+| `readme-guardian --uninstall-hook` | Remove the pre-push hook. |
 
 ## Example Sessions
 
@@ -95,10 +108,10 @@ Agent: [implements route, writes tests, runs them]
 You: "update the readme"
 
 Agent:
-  1. Runs readme-guardian --apply → sees new route detected
-  2. Reviews diff → route table now shows POST /api/patients
+  1. Runs readme-guardian to preview the route table change
+  2. Runs readme-guardian --apply
   3. Adds usage example showing request/response
-  4. Runs readme-guardian --check → passes
+  4. Runs readme-guardian --check
   5. "Done. Route documented with curl example."
 ```
 
@@ -111,10 +124,10 @@ Agent: [already observed the change]
 You: "sync docs"
 
 Agent:
-  1. Runs readme-guardian --apply
-  2. Reviews diff → module list updated, routes unchanged
+  1. Runs readme-guardian --status
+  2. Runs readme-guardian --apply
   3. Adds architecture note about new module boundaries
-  4. "Done. Module list updated, routes verified unchanged."
+  4. Runs readme-guardian --check
 ```
 
 ### Before opening a PR
@@ -123,10 +136,10 @@ Agent:
 You: "verify my PR has docs"
 
 Agent:
-  1. Runs readme-guardian --check → fails (stale test count)
+  1. Runs readme-guardian --check
   2. Runs readme-guardian --apply
-  3. Reviews diff → test count updated
-  4. "Ready to open. All docs current."
+  3. Reviews diff
+  4. Runs readme-guardian --check
 ```
 
 ## The Freshness Badge
@@ -134,7 +147,7 @@ Agent:
 Once installed, your README gets a **freshness badge** that updates with every push:
 
 ```
-![README](https://img.shields.io/badge/README-fresh-brightgreen)
+![readme-guardian](./readme-badge.svg)
 ```
 
 This badge is a **status symbol**. It signals to everyone who visits your repo: "This project is maintained. The docs are accurate. Trust this code."
@@ -156,8 +169,8 @@ Three layers of coverage:
 
 | Layer | What | When |
 |-------|------|------|
-| 🧠 **AI Agent (this skill)** | Contextual docs during coding | Active development |
-| ⚡ **Pre-push hook** | Auto-update README | Every `git push` |
-| 🔁 **CI check** | Block stale READMEs | Every pull request |
+| AI Agent (this skill) | Contextual docs during coding | Active development |
+| Pre-push hook | Auto-update README | Every `git push` |
+| CI check | Block stale READMEs | Every pull request |
 
 Use all three. Your README will never be wrong again.

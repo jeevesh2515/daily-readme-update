@@ -30,7 +30,6 @@
   },
   "preferUnplugged": true,
   "scripts": {
-    "postinstall": "node -e \"try{require('child_process').execSync('pipx install readme-guardian 2>/dev/null',{stdio:'pipe'})}catch(e){}\"",
     "readme-guardian": "node ./cli.js"
   }
 }

@@ -53,7 +53,7 @@
 | Lint | — |
 | Docker | no |
 | Monorepo | no |
-| Latest commit | `5558fcd fix: remove invalid PyPI classifier` |
+| Latest commit | `fix: harden README freshness checks` |
 
 <!-- /readme-guardian -->
 

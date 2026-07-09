@@ -1,85 +1,59 @@
 #!/usr/bin/env node
 /**
- * readme-guardian — npm entry point.
- * Automatically installs the Python CLI via pipx on first run,
- * then delegates all commands to it.
+ * readme-guardian npm entry point.
+ *
+ * Prefer an installed Python CLI. If it is missing, install it through pipx,
+ * then delegate with argument arrays so user flags are never shell-expanded.
  */
-const { execSync } = require("child_process");
-const path = require("path");
-const fs = require("fs");
+const { spawnSync } = require("child_process");
 
 const args = process.argv.slice(2);
-const isNpx = process.env.npm_config_user_agent?.includes("npx");
 
-// Check if the Python CLI is available
-function findPythonCLI() {
-  try {
-    const result = execSync("which readme-guardian 2>/dev/null || pipx run --help >/dev/null 2>&1 && echo pipx", {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    return result.trim();
-  } catch {
-    return null;
-  }
+function run(command, commandArgs, options = {}) {
+  return spawnSync(command, commandArgs, {
+    stdio: options.stdio || "inherit",
+    encoding: "utf-8",
+  });
 }
 
-// Auto-install via pipx if missing
-function ensureInstalled() {
-  try {
-    execSync("readme-guardian --version 2>/dev/null", { stdio: "pipe" });
-    return true;
-  } catch {
-    console.log("\n  🛡️  Installing readme-guardian (one-time setup)...\n");
-    try {
-      execSync("pipx install readme-guardian 2>&1", { stdio: "inherit" });
-      return true;
-    } catch {
-      // Fallback: run via pipx directly
-      return false;
-    }
-  }
+function isAvailable(command, commandArgs) {
+  const result = run(command, commandArgs, { stdio: "pipe" });
+  return result.status === 0;
 }
 
-// Check for --install-hook or --version locally
+function printInstallHelp() {
+  console.error(
+    "\n  Could not run readme-guardian.\n" +
+      "  Install it first:\n" +
+      "    pipx install readme-guardian\n" +
+      "    brew install jeevesh2515/homebrew-tap/readme-guardian\n"
+  );
+}
+
 if (args.includes("--version") || args.includes("-v")) {
   console.log("readme-guardian v1.0 (npm wrapper)");
   process.exit(0);
 }
 
-// Try direct command first
-try {
-  execSync("readme-guardian --version 2>/dev/null", { stdio: "pipe" });
-  // CLI is installed — delegate
-  const result = execSync(`readme-guardian ${args.join(" ")}`, {
-    stdio: "inherit",
-    encoding: "utf-8",
-  });
-  process.exit(0);
-} catch {
-  // CLI not installed — install or use pipx
-  if (ensureInstalled()) {
-    const result = execSync(`readme-guardian ${args.join(" ")}`, {
-      stdio: "inherit",
-      encoding: "utf-8",
-    });
-    process.exit(0);
-  } else {
-    // Last resort: pipx run
-    try {
-      execSync(`pipx run readme-guardian ${args.join(" ")}`, {
-        stdio: "inherit",
-        encoding: "utf-8",
-      });
-      process.exit(0);
-    } catch (e) {
-      console.error(
-        "\n  ❌ Could not run readme-guardian.\n" +
-          "  Install it first:\n" +
-          "    pipx install readme-guardian\n" +
-          "    brew install readme-guardian\n"
-      );
-      process.exit(1);
+if (!isAvailable("readme-guardian", ["--version"])) {
+  console.error("\n  Installing readme-guardian through pipx...\n");
+  const install = run("pipx", ["install", "readme-guardian"]);
+  if (install.error || install.status !== 0) {
+    const fallback = run("pipx", ["run", "readme-guardian", ...args]);
+    if (fallback.error || fallback.status !== 0) {
+      printInstallHelp();
+      process.exit(fallback.status || 1);
     }
+    process.exit(fallback.status || 0);
   }
 }
+
+let delegated = run("readme-guardian", args);
+if (delegated.error) {
+  delegated = run("pipx", ["run", "readme-guardian", ...args]);
+}
+if (delegated.error) {
+  printInstallHelp();
+  process.exit(1);
+}
+process.exit(delegated.status || 0);
