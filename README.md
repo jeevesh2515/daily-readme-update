@@ -51,7 +51,7 @@
 | Lint | — |
 | Docker | no |
 | Monorepo | no |
-| Latest commit | `chore: prepare 1.0.1 distribution` |
+| Latest commit | `chore: add homebrew archive sha` |
 
 <!-- /readme-guardian -->
 
