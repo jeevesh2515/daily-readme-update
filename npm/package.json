@@ -1,6 +1,6 @@
 {
   "name": "readme-guardian",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The README freshness guarantee for vibe coders. Auto-syncs README.md with live data before every push.",
   "keywords": [
     "readme",
@@ -21,6 +21,14 @@
   },
   "license": "MIT",
   "author": "Jeevesh Singale",
+  "bugs": {
+    "url": "https://github.com/jeevesh2515/readme-guardian/issues"
+  },
+  "files": [
+    "cli.js",
+    "README.md",
+    "package.json"
+  ],
   "bin": {
     "readme-guardian": "./cli.js",
     "readme-sync": "./cli.js"

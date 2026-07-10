@@ -2,9 +2,8 @@
   <a href="./readme-badge.svg">
     <img src="./readme-badge.svg" alt="README status" />
   </a>
-  <img src="https://img.shields.io/badge/version-1.0-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/version-1.0.1-blue" alt="Version" />
   <img src="https://img.shields.io/badge/npm-readme--guardian-blue?logo=npm" alt="npm" />
-  <img src="https://img.shields.io/badge/homebrew-readme--guardian-orange?logo=homebrew" alt="Homebrew" />
 
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
   <img src="https://img.shields.io/badge/PRs-welcome-orange" alt="PRs welcome" />
@@ -21,7 +20,7 @@
   <br />
   Auto-syncs your README with live test counts, API routes, and modules.
   <br />
-  Works with every AI agent, every language, every project.
+  Works with AI agents and common Node, Python, Go, and Rust projects.
 </p>
 
 <p align="center">
@@ -39,7 +38,6 @@
 <p align="center">
   <sup>
     <a href="https://www.npmjs.com/package/readme-guardian"><code>npm install -g readme-guardian</code></a> •
-    <a href="https://github.com/jeevesh2515/homebrew-tap"><code>brew install readme-guardian</code></a> •
     <a href="https://pypi.org/project/readme-guardian"><code>pipx install readme-guardian</code></a>
   </sup>
 </p>
@@ -48,12 +46,12 @@
 | Metric | Value |
 |--------|-------|
 | Language | python |
-| Version | 1.0.0 |
+| Version | 1.0.1 |
 | Tests | — |
 | Lint | — |
 | Docker | no |
 | Monorepo | no |
-| Latest commit | `fix: harden README freshness checks` |
+| Latest commit | `chore: prepare 1.0.1 distribution` |
 
 <!-- /readme-guardian -->
 
@@ -107,7 +105,7 @@ Your project looks abandoned. Contributors bounce. Users leave. Nobody trusts a 
 ## 🛡️ The Solution
 
 ```
-npx readme-guardian --install
+npx readme-guardian --install-hook
 ```
 
 **That's it.** One command. Now before every `git push`, readme-guardian:
@@ -117,7 +115,7 @@ npx readme-guardian --install
 3. 🗺️ Scans for API routes
 4. 📦 Lists source modules and frontend components
 5. 📝 Updates the README with verified data
-6. ✅ **Only if something actually changed**
+6. ✅ Updates only when something actually changed
 
 Your README is always accurate. You never think about it.
 
@@ -155,18 +153,12 @@ pipx install readme-guardian
 readme-guardian --install-hook
 ```
 
-### Homebrew (macOS)
-
-```bash
-brew install jeevesh2515/homebrew-tap/readme-guardian
-readme-guardian --install-hook
-```
-
 ### Commands
 
 | Command | What it does |
 |---------|-------------|
 | `readme-guardian` | Interactive preview — see what would change |
+| `readme-guardian --status` | Show whether README.md and the badge are up to date |
 | `readme-guardian --apply` | Apply changes immediately |
 | `readme-guardian --check` | CI mode — exit 1 if README is stale |
 | `readme-guardian --install-hook` | Install pre-push hook (runs automatically) |
@@ -200,14 +192,14 @@ readme-guardian auto-detects your project by looking at your config files:
  ├── Source modules   → Python packages, Node modules, Go packages
  ├── UI components    → React, Vue, Svelte files
  ├── Lint status      → ruff, ESLint
- └── Git state        → Last commit hash and message
+ └── Git state        → Latest commit subject
 ```
 
 ### What we generate
 
 A clean, beautiful README with:
 - **Live badges** — test count, version, lint status, Docker support
-- **The freshness badge** — `![README](https://img.shields.io/badge/README-fresh-brightgreen)` — a status symbol that tells the world your docs are accurate
+- **The freshness badge** — `![readme-guardian](./readme-badge.svg)` — a status symbol that tells the world your docs are accurate
 - **Quick start** — framework-aware install instructions
 - **API route table** — all detected endpoints with methods
 - **Module list** — source code directory structure
@@ -218,7 +210,7 @@ A clean, beautiful README with:
 
 If your README has `<!-- readme-guardian:stats -->` markers, only content between markers is replaced. Everything else — your narrative, architecture docs, contribution guidelines — stays intact.
 
-If no markers exist, readme-guardian generates a complete README and asks first.
+If no markers exist, plain `readme-guardian` previews a complete generated README. It writes only when `--apply` is explicit.
 
 ---
 
@@ -305,12 +297,14 @@ Any PR with a stale README **fails automatically**. No more merging docs that do
 
 ## 🔐 Security
 
-- **Zero network calls.** No telemetry, no API keys, no phone home.
-- **No credential access.** Does not read `.env`, secrets, or config files.
+- **Python CLI: zero network calls.** No telemetry, no API keys, no phone home.
+- **npm wrapper: install-only network use.** If the Python CLI is missing, the wrapper may call `pipx install readme-guardian` or `pipx run readme-guardian`.
+- **No credential access.** Does not read `.env` files or secret files.
 - **Reads only source structure.** Scans for patterns, not content.
-- **Suppressed build output.** All commands redirect stdout to logs.
-- **Git-local.** Only modifies `README.md`. Never touches source code.
-- **Ask-first mode.** Interactive mode shows diff before applying.
+- **Git-local writes.** Only writes `README.md` and `readme-badge.svg`. Never touches source code.
+- **No hidden history rewrites.** The pre-push hook never amends commits. If it updates README files, it blocks the push so you can review and commit them.
+- **Preview by default.** Plain `readme-guardian` shows a diff before applying.
+- **Responsible disclosure.** See the [security policy](https://github.com/jeevesh2515/readme-guardian/blob/main/SECURITY.md).
 
 ---
 
@@ -331,9 +325,12 @@ Any PR with a stale README **fails automatically**. No more merging docs that do
 ├── README.md                  # This file — hand-crafted with markers
 ├── SKILL.md                   # AI agent companion skill
 ├── pyproject.toml             # Python package (pipx installable)
+├── SECURITY.md                # Security policy and privacy notes
 ├── readme_sync/
 │   ├── __init__.py            # CLI implementation
 │   └── __main__.py            # python -m entry point
+├── npm/                       # npm/npx wrapper package
+├── homebrew/                  # Homebrew formula template for tap releases
 ├── .github/workflows/         # CI enforcement (copy to your repo)
 │   └── readme-check.yml
 ├── LICENSE                    # MIT

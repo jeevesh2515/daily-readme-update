@@ -31,7 +31,7 @@ function printInstallHelp() {
 }
 
 if (args.includes("--version") || args.includes("-v")) {
-  console.log("readme-guardian v1.0 (npm wrapper)");
+  console.log("readme-guardian v1.0.1 (npm wrapper)");
   process.exit(0);
 }
 

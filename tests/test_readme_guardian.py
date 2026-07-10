@@ -148,6 +148,11 @@ old routes
                 self.assertEqual(readme_sync.planned_changes(info), {})
                 self.assertIn("tests pass", (root / "readme-badge.svg").read_text())
 
+    def test_pre_push_hook_blocks_after_updates_without_amending(self):
+        self.assertIn("exit 1", readme_sync.HOOK_TEMPLATE)
+        self.assertIn("Review and commit", readme_sync.HOOK_TEMPLATE)
+        self.assertNotIn("commit --amend", readme_sync.HOOK_TEMPLATE)
+
 
 if __name__ == "__main__":
     unittest.main()

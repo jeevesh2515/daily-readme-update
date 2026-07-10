@@ -23,9 +23,13 @@ import argparse
 import difflib
 import json
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
+
+
+VERSION = "1.0.1"
 
 
 def debug(msg: str) -> None:
@@ -56,7 +60,7 @@ def banner() -> None:
     if "--pre-push" in sys.argv:
         return
     print(file=sys.stderr)
-    print("  \U0001f6e1\ufe0f  readme-guardian v1.0", file=sys.stderr)
+    print(f"  \U0001f6e1\ufe0f  readme-guardian v{VERSION}", file=sys.stderr)
     print("  \u2500" * 30, file=sys.stderr)
 
 
@@ -99,11 +103,11 @@ def detect_project(root: Path) -> dict:
                 info["has_frontend"] = True
 
             if "test" in info["scripts"]:
-                info["test_command"] = "npm test -- --reporter=min 2>&1 || npm test 2>&1"
+                info["test_command"] = "npm test -- --reporter=min || npm test"
             if "build" in info["scripts"]:
-                info["build_command"] = "npm run build 2>&1"
+                info["build_command"] = "npm run build"
             if "lint" in info["scripts"]:
-                info["lint_command"] = "npm run lint 2>&1"
+                info["lint_command"] = "npm run lint"
 
             workspaces = pkg.get("workspaces", [])
             info["is_monorepo"] = bool(workspaces)
@@ -147,8 +151,8 @@ def detect_project(root: Path) -> dict:
         except Exception:
             pass
         info["type"] = "go"
-        info["test_command"] = "go test ./... 2>&1"
-        info["build_command"] = "go build ./... 2>&1"
+        info["test_command"] = "go test ./..."
+        info["build_command"] = "go build ./..."
 
     # --- Cargo.toml (Rust) ---
     if (root / "Cargo.toml").exists():
@@ -163,8 +167,8 @@ def detect_project(root: Path) -> dict:
         except Exception:
             pass
         info["type"] = "rust"
-        info["test_command"] = "cargo test 2>&1"
-        info["build_command"] = "cargo build 2>&1"
+        info["test_command"] = "cargo test"
+        info["build_command"] = "cargo build"
 
     if (root / "Dockerfile").exists():
         info["has_docker"] = True
@@ -183,15 +187,15 @@ def _find_python_cmd(root: Path, tool: str) -> str | None:
     """Check if a Python tool is available via venv or configured."""
     bin_path = root / ".venv" / "bin" / tool
     if bin_path.exists():
-        return f"{bin_path} 2>&1"
+        return shlex.quote(str(bin_path))
     if (root / "pyproject.toml").exists():
         with open(root / "pyproject.toml") as f:
             if tool in f.read():
                 venv_python = root / ".venv" / "bin" / "python"
                 if tool == "pytest":
-                    return f"{venv_python} -m pytest -q 2>&1" if venv_python.exists() else None
+                    return f"{shlex.quote(str(venv_python))} -m pytest -q" if venv_python.exists() else None
                 elif tool == "ruff":
-                    return f"{venv_python} -m ruff check . 2>&1" if venv_python.exists() else None
+                    return f"{shlex.quote(str(venv_python))} -m ruff check ." if venv_python.exists() else None
     return None
 
 
@@ -856,7 +860,7 @@ def ci_check(info: dict) -> bool:
 
 HOOK_TEMPLATE = """\
 #!/bin/sh
-# readme-guardian pre-push hook — keeps README.md in sync
+# readme-guardian pre-push hook - keeps README.md in sync
 # Installed by: readme-guardian --install-hook
 # Remove with: readme-guardian --uninstall-hook
 
@@ -865,6 +869,12 @@ if command -v readme-guardian >/dev/null 2>&1; then
   readme-guardian --apply --pre-push
 else
   python3 -m readme_sync --apply --pre-push
+fi
+
+if ! git diff --quiet -- README.md readme-badge.svg 2>/dev/null; then
+  echo "  readme-guardian updated README.md/readme-badge.svg."
+  echo "  Review and commit those changes, then push again."
+  exit 1
 fi
 """
 
@@ -892,10 +902,6 @@ def uninstall_hook() -> None:
     else:
         warn("No readme-guardian hook found")
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -932,32 +938,12 @@ def collect_info(root: Path) -> dict:
     return info
 
 
-def amend_current_commit() -> None:
-    subprocess.run(["git", "add", "README.md", "readme-badge.svg"], cwd=Path.cwd(), capture_output=True)
-    head = subprocess.run(["git", "rev-parse", "--verify", "HEAD"], cwd=Path.cwd(), capture_output=True)
-    if head.returncode != 0:
-        warn("README updated; no commit exists to amend")
-        return
-    amended = subprocess.run(
-        ["git", "commit", "--amend", "--no-edit", "--no-verify"],
-        cwd=Path.cwd(),
-        capture_output=True,
-        text=True,
-    )
-    if amended.returncode == 0:
-        ok("README changes amended into current commit")
-    else:
-        warn("README updated; commit amend skipped")
-        if amended.stderr.strip():
-            warn(amended.stderr.strip().splitlines()[-1])
-
-
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
     if args.version:
-        print("readme-guardian v1.0")
+        print(f"readme-guardian v{VERSION}")
         return
 
     banner()
@@ -984,9 +970,7 @@ def main() -> None:
         return
 
     if args.apply or args.pre_push:
-        updated = apply_changes(changes)
-        if args.pre_push and updated:
-            amend_current_commit()
+        apply_changes(changes)
         return
 
     print_preview(changes)

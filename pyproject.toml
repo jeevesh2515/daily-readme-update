@@ -1,9 +1,9 @@
 [project]
 name = "readme-guardian"
-version = "1.0.0"
+version = "1.0.1"
 description = "The README freshness guarantee for vibe coders. Auto-syncs README.md with live data before every push."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.10"
 keywords = ["readme", "documentation", "git-hooks", "developer-tools", "vibe-coding", "ai-agents", "claude-code", "codex"]
 
@@ -14,7 +14,6 @@ authors = [
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Documentation",
     "Topic :: Software Development :: Version Control :: Git",
@@ -24,6 +23,7 @@ classifiers = [
 Homepage = "https://github.com/jeevesh2515/readme-guardian"
 Repository = "https://github.com/jeevesh2515/readme-guardian"
 "Bug Tracker" = "https://github.com/jeevesh2515/readme-guardian/issues"
+"Security" = "https://github.com/jeevesh2515/readme-guardian/security/policy"
 
 [project.scripts]
 readme-guardian = "readme_sync:main"
@@ -31,3 +31,7 @@ readme-sync = "readme_sync:main"
 
 [tool.setuptools.packages.find]
 include = ["readme_sync*"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"

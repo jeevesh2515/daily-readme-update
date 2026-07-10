@@ -1,9 +1,9 @@
-# Hosted at https://github.com/jeevesh2515/homebrew-tap
-# Formula for readme-guardian
+# Template for https://github.com/jeevesh2515/homebrew-tap after a tagged release.
+# Replace sha256 with the real v1.0.1 source archive hash before publishing.
 class ReadmeGuardian < Formula
   desc "README freshness guarantee for vibe coders — auto-syncs README.md with live data"
   homepage "https://github.com/jeevesh2515/readme-guardian"
-  url "https://github.com/jeevesh2515/readme-guardian/archive/refs/tags/v1.0.0.tar.gz"
+  url "https://github.com/jeevesh2515/readme-guardian/archive/refs/tags/v1.0.1.tar.gz"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000" # Set on release
   license "MIT"
 
