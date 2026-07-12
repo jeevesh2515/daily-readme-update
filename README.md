@@ -1,6 +1,6 @@
 # readme-guardian
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 Keep the facts in a fast-moving project's README current without letting an AI agent rewrite its story. `readme-guardian` detects a supported project's routes, modules, components, version, and optional test/lint result; it updates only explicitly managed README sections and a local status badge.
@@ -11,7 +11,7 @@ It is built for AI-assisted development, where code changes quickly and README d
 | Metric | Value |
 |--------|-------|
 | Language | python |
-| Version | 1.1.0 |
+| Version | 1.1.1 |
 | Tests | not configured |
 | Lint | — |
 | Docker | no |
@@ -56,7 +56,7 @@ readme-guardian --check --run-checks
 The published release assets are the canonical way to install `1.1.0` until the package registries carry the same version:
 
 ```bash
-pipx install "https://github.com/jeevesh2515/readme-guardian/releases/download/v1.1.0/readme_guardian-1.1.0-py3-none-any.whl"
+pipx install "https://github.com/jeevesh2515/readme-guardian/releases/download/v1.1.1/readme_guardian-1.1.1-py3-none-any.whl"
 readme-guardian --version
 ```
 
@@ -67,11 +67,11 @@ Install [pipx](https://pipx.pypa.io/stable/installation/) first if it is not ava
 The npm tarball includes the matching Python wheel, so it does not silently download a second package from PyPI. It runs that wheel with `pipx` in an isolated environment.
 
 ```bash
-npm install -g "https://github.com/jeevesh2515/readme-guardian/releases/download/v1.1.0/readme-guardian-1.1.0.tgz"
+npm install -g "https://github.com/jeevesh2515/readme-guardian/releases/download/v1.1.1/readme-guardian-1.1.1.tgz"
 readme-guardian --status
 ```
 
-The public npm and PyPI registries currently serve `1.0.0`; publish credentials are required to release `1.1.0` there. Do not treat a registry version as this release until its version is `1.1.0`.
+The public npm registry has a 24-hour cooldown after its previous unpublish. PyPI currently serves `1.1.0`; `1.1.1` will be published to both registries by the Trusted Publishing workflow after the npm cooldown.
 
 Maintainers can publish without storing registry credentials by configuring the included [Trusted Publishing workflow](PUBLISHING.md).
 
@@ -84,7 +84,7 @@ Maintainers can publish without storing registry credentials by configuring the 
 | Metric | Value |
 |--------|-------|
 | Language | python |
-| Version | 1.1.0 |
+| Version | 1.1.1 |
 | Tests | not configured |
 | Lint | — |
 | Docker | no |

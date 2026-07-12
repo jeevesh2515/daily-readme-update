@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 MAX_SCAN_FILES = 2_500
 MAX_SCAN_FILE_BYTES = 1_000_000
 

@@ -1,6 +1,6 @@
 {
   "name": "readme-guardian",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Safely keep managed README facts current for fast-moving AI-assisted projects.",
   "keywords": [
     "readme",
@@ -31,11 +31,11 @@
     "cli.js",
     "README.md",
     "package.json",
-    "readme_guardian-1.1.0-py3-none-any.whl"
+    "readme_guardian-1.1.1-py3-none-any.whl"
   ],
   "bin": {
-    "readme-guardian": "./cli.js",
-    "readme-sync": "./cli.js"
+    "readme-guardian": "cli.js",
+    "readme-sync": "cli.js"
   },
   "engines": {
     "node": ">=18"

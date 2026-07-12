@@ -93,3 +93,7 @@ jobs:
       - name: Publish package with npm Trusted Publishing
         run: npm publish --access public
         working-directory: npm
+        env:
+          # Optional bootstrap fallback. Once npm Trusted Publishing is configured,
+          # remove this protected environment secret and use OIDC alone.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
