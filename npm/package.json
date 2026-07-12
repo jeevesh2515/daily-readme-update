@@ -1,7 +1,7 @@
 {
   "name": "readme-guardian",
-  "version": "1.0.1",
-  "description": "The README freshness guarantee for vibe coders. Auto-syncs README.md with live data before every push.",
+  "version": "1.1.0",
+  "description": "Safely keep managed README facts current for fast-moving AI-assisted projects.",
   "keywords": [
     "readme",
     "documentation",
@@ -27,7 +27,8 @@
   "files": [
     "cli.js",
     "README.md",
-    "package.json"
+    "package.json",
+    "readme_guardian-1.1.0-py3-none-any.whl"
   ],
   "bin": {
     "readme-guardian": "./cli.js",

@@ -1,7 +1,7 @@
 [project]
 name = "readme-guardian"
-version = "1.0.1"
-description = "The README freshness guarantee for vibe coders. Auto-syncs README.md with live data before every push."
+version = "1.1.0"
+description = "Safely keep managed README facts current for fast-moving AI-assisted projects."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"

@@ -148,9 +148,51 @@ old routes
                 self.assertEqual(readme_sync.planned_changes(info), {})
                 self.assertIn("tests pass", (root / "readme-badge.svg").read_text())
 
+    def test_init_preserves_existing_readme_and_adds_managed_sections(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            original = "# Demo\n\nThis hand-written section must stay.\n"
+            write(root / "README.md", original)
+            info = {
+                "name": "demo",
+                "type": "python",
+                "version": "1.0.0",
+                "tests": None,
+                "test_status": "not-run",
+                "lint_pass": None,
+                "has_docker": False,
+                "is_monorepo": False,
+                "routes": [],
+                "modules": [],
+                "components": [],
+            }
+
+            with cwd(root):
+                self.assertTrue(readme_sync.initialize_readme(info))
+                updated = (root / "README.md").read_text()
+                self.assertIn(original.rstrip(), updated)
+                self.assertIn("<!-- readme-guardian:stats -->", updated)
+                self.assertTrue((root / "readme-badge.svg").exists())
+
+    def test_default_collection_does_not_execute_project_commands(self):
+        info = {"test_command": ["definitely-not-a-real-command"]}
+        self.assertIsNone(readme_sync.collect_tests(info, run_checks=False))
+        self.assertEqual(info["test_status"], "not-run")
+
+    def test_failed_tests_make_a_red_badge(self):
+        badge = readme_sync.generate_badge({"tests": 0, "test_status": "failed", "lint_pass": None})
+        self.assertIn("tests failed", badge)
+        self.assertIn("#e05d44", badge)
+
+    def test_escapes_detected_route_text_in_markdown(self):
+        table = readme_sync._routes_content({"routes": ["GET /users/`name`|admin"]})
+        self.assertIn("/users/\\`name\\`\\|admin", table)
+
     def test_pre_push_hook_blocks_after_updates_without_amending(self):
         self.assertIn("exit 1", readme_sync.HOOK_TEMPLATE)
         self.assertIn("Review and commit", readme_sync.HOOK_TEMPLATE)
+        self.assertIn("--run-checks", readme_sync.HOOK_TEMPLATE)
+        self.assertIn("already has uncommitted changes", readme_sync.HOOK_TEMPLATE)
         self.assertNotIn("commit --amend", readme_sync.HOOK_TEMPLATE)
 
 

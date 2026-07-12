@@ -1,0 +1,4 @@
+interface:
+  display_name: "README Guardian"
+  short_description: "Keep README facts verified and current"
+  default_prompt: "Use $readme-guardian to check and safely sync this project README."

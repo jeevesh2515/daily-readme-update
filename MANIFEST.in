@@ -3,3 +3,4 @@ include README.md
 include SECURITY.md
 include readme-badge.svg
 include SKILL.md
+recursive-include agents *.yaml
