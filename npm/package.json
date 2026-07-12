@@ -20,6 +20,9 @@
     "url": "git+https://github.com/jeevesh2515/readme-guardian.git"
   },
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "Jeevesh Singale",
   "bugs": {
     "url": "https://github.com/jeevesh2515/readme-guardian/issues"

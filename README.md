@@ -73,6 +73,8 @@ readme-guardian --status
 
 The public npm and PyPI registries currently serve `1.0.0`; publish credentials are required to release `1.1.0` there. Do not treat a registry version as this release until its version is `1.1.0`.
 
+Maintainers can publish without storing registry credentials by configuring the included [Trusted Publishing workflow](PUBLISHING.md).
+
 ## What it manages
 
 `readme-guardian --init` adds a `## Project facts` area with marker-delimited sections such as:
