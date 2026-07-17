@@ -149,10 +149,10 @@ Everything outside those markers remains yours: the story, diagrams, screenshots
 
 ### Python
 
-PyPI currently provides `1.1.0`:
+Install the current public release from PyPI:
 
 ```bash
-pipx install readme-guardian==1.1.0
+pipx install readme-guardian
 readme-guardian --version
 ```
 
@@ -177,7 +177,7 @@ Release publication is automated through [PUBLISHING.md](PUBLISHING.md), which u
 Use a trusted CI environment to prevent managed facts from drifting:
 
 ```yaml
-- run: pipx install readme-guardian==1.1.0
+- run: pipx install "readme-guardian>=1.1.2,<2"
 - run: readme-guardian --check --run-checks
 ```
 
