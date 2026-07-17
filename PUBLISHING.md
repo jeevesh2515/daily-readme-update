@@ -39,6 +39,6 @@ If the entire unscoped npm package was unpublished, npm blocks the name for 24 h
 
 ## Publish an Existing Release
 
-After configuring both trusted publishers, open the GitHub Actions **Publish** workflow, choose **Run workflow**, and enter the existing tag `v1.1.1`. Future published GitHub releases trigger the workflow automatically.
+After configuring both trusted publishers, open the GitHub Actions **Publish** workflow, choose **Run workflow**, and enter the existing tag `v1.1.2`. Future published GitHub releases trigger the workflow automatically.
 
 For stronger protection, configure the `pypi` and `npm` GitHub Environments with required reviewers before running a release. Keep any existing npm token only for an emergency manual publish, stored in your local npm login; revoke it after Trusted Publishing has succeeded.

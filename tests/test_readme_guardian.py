@@ -184,6 +184,19 @@ old routes
         self.assertIn("tests failed", badge)
         self.assertIn("#e05d44", badge)
 
+    def test_badge_svg_uses_a_valid_gradient_percentage(self):
+        badge = readme_sync.generate_badge({"tests": None, "test_status": "not-run", "lint_pass": None})
+        self.assertIn('y2="100%"', badge)
+        self.assertNotIn("100%%", badge)
+
+    def test_badge_states_have_distinct_status_colors(self):
+        fresh = readme_sync.generate_badge({"tests": 3, "test_status": "passed", "lint_pass": True})
+        skipped = readme_sync.generate_badge({"tests": None, "test_status": "not-run", "lint_pass": None})
+        failed = readme_sync.generate_badge({"tests": 0, "test_status": "failed", "lint_pass": None})
+        self.assertIn("#4c1", fresh)
+        self.assertIn("#dfb317", skipped)
+        self.assertIn("#e05d44", failed)
+
     def test_escapes_detected_route_text_in_markdown(self):
         table = readme_sync._routes_content({"routes": ["GET /users/`name`|admin"]})
         self.assertIn("/users/\\`name\\`\\|admin", table)

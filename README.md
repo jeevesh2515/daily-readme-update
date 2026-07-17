@@ -1,17 +1,32 @@
-# readme-guardian
+<p align="center">
+  <a href="#readme-status">
+    <img src="./readme-badge.svg" alt="Live README freshness status" />
+  </a>
+  <img src="https://img.shields.io/badge/version-1.1.2-1b75bb?style=flat-square" alt="Version 1.1.2" />
+  <img src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square" alt="MIT license" />
+  <img src="https://img.shields.io/badge/AI--agent-ready-111827?style=flat-square" alt="AI agent ready" />
+</p>
 
-![Version](https://img.shields.io/badge/version-1.1.1-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+<h1 align="center">readme-guardian</h1>
 
-Keep the facts in a fast-moving project's README current without letting an AI agent rewrite its story. `readme-guardian` detects a supported project's routes, modules, components, version, and optional test/lint result; it updates only explicitly managed README sections and a local status badge.
+<p align="center">
+  <strong>Documentation freshness for fast-moving AI-assisted projects.</strong><br />
+  Detect README drift, preview the facts, and keep a visible status signal beside the code.
+</p>
 
-It is built for AI-assisted development, where code changes quickly and README drift is easy to miss.
+<p align="center">
+  <a href="#quick-start">Quick start</a> &bull;
+  <a href="#readme-status">Status badge</a> &bull;
+  <a href="#automatic-guard">Push-time guard</a> &bull;
+  <a href="#for-ai-agents">AI agents</a> &bull;
+  <a href="#security">Security</a>
+</p>
 
 <!-- readme-guardian:stats -->
 | Metric | Value |
 |--------|-------|
 | Language | python |
-| Version | 1.1.1 |
+| Version | 1.1.2 |
 | Tests | not configured |
 | Lint | — |
 | Docker | no |
@@ -19,72 +34,107 @@ It is built for AI-assisted development, where code changes quickly and README d
 
 <!-- /readme-guardian -->
 
-## Start here
+---
 
-Run from the root of a Node, Python, Go, or Rust repository:
+## The Problem
+
+AI agents make it easy to ship code quickly. They also make it easy to leave a README describing a project that no longer exists.
+
+`readme-guardian` turns a small, machine-verifiable part of the README into a checked artifact: project version, detected routes, modules, components, test result, and a local SVG freshness badge. It never replaces the hand-written explanation of your product.
+
+## Quick Start
+
+Run these commands from a project root:
 
 ```bash
-# Inspect only: no README changes and no project commands are run.
+# Check whether managed README facts are current. No files or project commands run.
 readme-guardian --status
 
-# One-time setup: append managed sections without replacing your existing README.
+# One time only: append managed sections without replacing existing prose.
 readme-guardian --init
 
-# Preview the exact README.md and badge changes.
+# Preview the exact README.md and readme-badge.svg diff.
 readme-guardian
 
-# Update managed sections after reviewing the preview.
+# Apply only the reviewed managed sections.
 readme-guardian --apply
 
-# Verify in CI or before a PR.
+# Enforce freshness in CI or before a pull request.
 readme-guardian --check
 ```
 
-Use `--run-checks` only when you trust the project and want the README to record a fresh test and lint result:
+To record a live test and lint result, opt in explicitly:
 
 ```bash
 readme-guardian --apply --run-checks
 readme-guardian --check --run-checks
 ```
 
-`--run-checks` may execute the repository's own `npm test`, `pytest`, `go test`, `cargo test`, or lint command. A normal status, preview, apply, or check never runs those commands.
+`--run-checks` may execute the repository's own test and lint commands. Normal status, preview, apply, and check commands do not execute project scripts.
 
-## Install
+## Readme Status
 
-### GitHub release wheel
+Every initialized project gets a local `readme-badge.svg`:
 
-The published release assets are the canonical way to install `1.1.0` until the package registries carry the same version:
-
-```bash
-pipx install "https://github.com/jeevesh2515/readme-guardian/releases/download/v1.1.1/readme_guardian-1.1.1-py3-none-any.whl"
-readme-guardian --version
+```markdown
+![README status](./readme-badge.svg)
 ```
 
-Install [pipx](https://pipx.pypa.io/stable/installation/) first if it is not available. Each GitHub release publishes SHA-256 digests alongside its assets.
+<p align="center">
+  <img src="https://img.shields.io/badge/README-12_passing-4c1?style=flat-square" alt="Green README badge example" />
+  <img src="https://img.shields.io/badge/README-checks_skipped-dfb317?style=flat-square" alt="Yellow README badge example" />
+  <img src="https://img.shields.io/badge/README-tests_failed-e05d44?style=flat-square" alt="Red README badge example" />
+</p>
 
-### npm / npx
+| Signal | Meaning | What to do |
+|---|---|---|
+| Green | Managed facts were generated after passing checks. | Keep shipping. |
+| Yellow | Facts are synced, but checks were skipped or unavailable. | Run `--run-checks` when the repository is trusted. |
+| Red | The last explicitly requested test run failed or timed out. | Fix the failing check, then apply again. |
 
-The npm tarball includes the matching Python wheel, so it does not silently download a second package from PyPI. It runs that wheel with `pipx` in an isolated environment.
+The badge reports the result recorded during the last update. `readme-guardian --check` detects when a source change makes the managed README sections stale.
+
+## Automatic Guard
+
+Install the guarded pre-push hook once:
 
 ```bash
-npm install -g "https://github.com/jeevesh2515/readme-guardian/releases/download/v1.1.1/readme-guardian-1.1.1.tgz"
-readme-guardian --status
+readme-guardian --install-hook
 ```
 
-The public npm registry has a 24-hour cooldown after its previous unpublish. PyPI currently serves `1.1.0`; `1.1.1` will be published to both registries by the Trusted Publishing workflow after the npm cooldown.
+On each push, the hook runs the trusted-project check sequence and updates managed README files when facts changed. It then stops that push so you can review and commit the generated diff. The next push proceeds with the reviewed README.
 
-Maintainers can publish without storing registry credentials by configuring the included [Trusted Publishing workflow](PUBLISHING.md).
+```text
+code changes
+    |
+    v
+pre-push check and README refresh
+    |
+    +-- no changes --> push proceeds
+    |
+    +-- README changed --> review + commit --> push proceeds
+```
 
-## What it manages
+The hook does not amend commits, rewrite history, replace an existing hook, or overwrite already-uncommitted README changes.
 
-`readme-guardian --init` adds a `## Project facts` area with marker-delimited sections such as:
+## What It Detects
+
+| Project fact | Sources |
+|---|---|
+| Name and version | `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod` |
+| API routes | FastAPI, Flask, Express, Fastify, Next.js App Router, common Go patterns |
+| Modules and components | Conventional Python, Node, Go, Rust, React, Vue, and Svelte layouts |
+| Test and lint result | Opt-in only, through `--run-checks` |
+| Docker and monorepo hints | Conventional project files |
+
+Managed sections use marker pairs such as:
 
 ```markdown
 <!-- readme-guardian:stats -->
 | Metric | Value |
 |--------|-------|
 | Language | python |
-| Version | 1.1.1 |
+| Version | 1.1.2 |
 | Tests | not configured |
 | Lint | — |
 | Docker | no |
@@ -93,82 +143,77 @@ Maintainers can publish without storing registry credentials by configuring the 
 <!-- /readme-guardian -->
 ```
 
-Later runs replace only content between those markers. Your introduction, architecture notes, screenshots, examples, contribution guide, and all other prose stay yours.
+Everything outside those markers remains yours: the story, diagrams, screenshots, setup instructions, architecture rationale, and contributor guidance.
 
-| Fact | Detection |
-|---|---|
-| Project name and version | `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod` |
-| API routes | FastAPI/Flask, Express/Fastify, Next.js App Router, common Go patterns |
-| Modules and components | Conventional Python, Node, Go, Rust, React, Vue, and Svelte layouts |
-| Test and lint result | Optional, only with `--run-checks` |
-| Docker and monorepo hints | Conventional project files |
+## Install
 
-The detector is intentionally conservative. A current status means the managed facts match what this tool can detect; it is not a claim that every sentence in a README is correct.
+### Python
 
-## Status badge
-
-`--init` creates `readme-badge.svg`, which can be displayed from the repository itself:
-
-```markdown
-![README status](./readme-badge.svg)
-```
-
-| Color | Meaning |
-|---|---|
-| Green | Managed facts were generated with passing tests. |
-| Yellow | Managed facts are synced, but checks were skipped or no test command was configured. |
-| Red | The last explicitly requested test run failed or timed out. |
-
-Run `readme-guardian --check` in CI to catch source changes that make the managed facts stale.
-
-## Git and CI
-
-Install a pre-push hook after initialization:
+PyPI currently provides `1.1.0`:
 
 ```bash
-readme-guardian --install-hook
+pipx install readme-guardian==1.1.0
+readme-guardian --version
 ```
 
-The hook runs checks only because you explicitly installed it. It never rewrites history or amends commits. It refuses to replace an existing hook, refuses to run over uncommitted README or badge changes, and blocks a push when it produces updates so those updates can be reviewed and committed.
+### npm
 
-For CI, use the same two-stage pattern in a trusted repository:
+The npm package contains the matching Python wheel and runs it with `pipx` in an isolated environment. When registry publication is pending, use the matching GitHub release asset instead; it contains the same pinned wheel.
+
+```bash
+npm install -g readme-guardian
+readme-guardian --status
+```
+
+```bash
+# Release-asset fallback for the current version
+npm install -g "https://github.com/jeevesh2515/readme-guardian/releases/download/v1.1.2/readme-guardian-1.1.2.tgz"
+```
+
+Release publication is automated through [PUBLISHING.md](PUBLISHING.md), which uses PyPI Trusted Publishing and moves npm to OIDC after its initial bootstrap publication.
+
+## CI
+
+Use a trusted CI environment to prevent managed facts from drifting:
 
 ```yaml
 - run: pipx install readme-guardian==1.1.0
 - run: readme-guardian --check --run-checks
 ```
 
-Use the GitHub release wheel URL above until `1.1.0` is published to PyPI.
+`--check` exits nonzero when `README.md` or `readme-badge.svg` differs from the current detected project state.
 
-## AI agent skill
+## For AI Agents
 
-The repository includes a concise [`SKILL.md`](SKILL.md) with a safe workflow for agents: inspect, initialize once, preview, apply managed facts, add human context, and verify.
-
-OpenCode discovers project skills at `.opencode/skills/<name>/SKILL.md` and global skills at `~/.config/opencode/skills/<name>/SKILL.md`. For a project-local setup:
+The included [SKILL.md](SKILL.md) gives coding agents a disciplined README workflow: inspect the changes, check freshness, preview, apply managed facts, add human context, and verify.
 
 ```bash
+# OpenCode project skill
 mkdir -p .opencode/skills/readme-guardian
 cp /path/to/readme-guardian/SKILL.md .opencode/skills/readme-guardian/SKILL.md
+
+# Codex global skill
+mkdir -p ~/.codex/skills/readme-guardian
+cp /path/to/readme-guardian/SKILL.md ~/.codex/skills/readme-guardian/SKILL.md
 ```
 
-Codex users can use the same file in `~/.codex/skills/readme-guardian/SKILL.md`.
+The CLI supplies evidence. The agent supplies the explanation of why the project changed and how users should work with it.
 
-## Security model
+## Security
 
-- The Python CLI has no telemetry and makes no network requests.
-- It never replaces an unmarked README. `--init` appends managed sections.
-- It writes only managed content in `README.md` and `readme-badge.svg`.
-- It refuses to follow symlinks for README, badge, or hook writes.
-- Source scanning skips symlinks, common generated directories, files over 1 MB, and stops after 2,500 files.
-- It does not execute project commands unless `--run-checks` is explicitly passed.
-- The npm wrapper uses argument arrays and the wheel bundled inside its verified npm tarball; it does not globally install Python packages.
-- The tool cannot make an untrusted repository safe to execute. Run `--run-checks` only in codebases you trust.
+- No telemetry or network calls from the Python CLI.
+- No replacement of an unmarked README; `--init` appends managed sections.
+- Writes only managed `README.md` content and `readme-badge.svg`.
+- Refuses symlinked README, badge, and hook targets.
+- Skips symlinks and common generated directories while scanning; source scans are bounded by file count and size.
+- Runs project commands only with explicit `--run-checks` consent.
+- npm delegates through argument arrays and a wheel bundled in its package; it does not interpolate shell arguments or silently install a global Python package.
 
-See [SECURITY.md](SECURITY.md) for the complete policy and private disclosure path.
+Read the complete [security policy](SECURITY.md) before using `--run-checks` on an unfamiliar repository.
 
 ## Contributing
 
-Contributions that improve detection accuracy, guardrails, tests, or agent interoperability are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), follow the [Code of Conduct](CODE_OF_CONDUCT.md), and open an issue with a small reproducible project shape.
+Help improve detection accuracy, guardrails, tests, and agent interoperability. Read [CONTRIBUTING.md](CONTRIBUTING.md), follow the [Code of Conduct](CODE_OF_CONDUCT.md), and include a small reproducible project shape in bug reports.
 
 ## License
 

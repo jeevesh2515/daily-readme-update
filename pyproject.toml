@@ -1,6 +1,6 @@
 [project]
 name = "readme-guardian"
-version = "1.1.1"
+version = "1.1.2"
 description = "Safely keep managed README facts current for fast-moving AI-assisted projects."
 readme = "README.md"
 license = "MIT"

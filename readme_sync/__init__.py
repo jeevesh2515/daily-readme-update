@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 MAX_SCAN_FILES = 2_500
 MAX_SCAN_FILE_BYTES = 1_000_000
 
@@ -440,7 +440,7 @@ def collect_lint(info: dict, run_checks: bool) -> bool | None:
 
 BADGE_TEMPLATE = """\
 <svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="20" role="img" aria-label="README: {status}">
-  <linearGradient id="s" x2="0" y2="100%%">
+  <linearGradient id="s" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
     <stop offset="1" stop-opacity=".1"/>
   </linearGradient>
