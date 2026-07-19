@@ -37,8 +37,12 @@ After the first successful npm publication, configure the npm Trusted Publisher 
 
 If the entire unscoped npm package was unpublished, npm blocks the name for 24 hours and never permits reuse of an unpublished version. Publish a new version after that cooldown; do not retry the unpublished version.
 
-## Publish an Existing Release
+## Publish a New Release
 
-After configuring both trusted publishers, open the GitHub Actions **Publish** workflow, choose **Run workflow**, and enter the existing tag `v1.1.2`. Future published GitHub releases trigger the workflow automatically.
+1. Commit the version bump, create an annotated tag such as `v1.1.3`, and push that tag.
+2. The **Publish** workflow starts from the tag, validates the source, then publishes npm before PyPI.
+3. After the workflow succeeds, publish the matching GitHub Release and upload its release artifacts.
+
+The workflow is deliberately idempotent. A manual rerun checks npm and PyPI first; versions already present in both registries are skipped successfully instead of being uploaded again. Use **Run workflow** with an existing tag only to resume a partial release, not to overwrite a published version.
 
 For stronger protection, configure the `pypi` and `npm` GitHub Environments with required reviewers before running a release. Keep any existing npm token only for an emergency manual publish, stored in your local npm login; revoke it after Trusted Publishing has succeeded.
